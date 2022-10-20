@@ -97,7 +97,7 @@ def create_instance(lengths: np.ndarray, thetas: np.ndarray, omegas: np.ndarray)
     xyz_str = "\n".join([str(n), "INSTANCE", *xyz_coords])
 
     ## Salvar coordenadas
-    with open("coord.xyz", "w") as f:
+    with open("input.xyz", "w") as f:
         f.write(xyz_str)
 
     atoms = map(Atom, points)
