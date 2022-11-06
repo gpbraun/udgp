@@ -115,7 +115,7 @@ OMEGA_VALUES = np.array([np.pi / 3.0, np.pi, 5.0 * np.pi / 3.0])
 
 
 def main():
-    n = 4
+    n = 5
 
     lengths = np.full(n, 1.5)
     thetas = np.full(n, 2)
