@@ -18,7 +18,7 @@ class BaseModel(gp.Model):
     def __init__(
         self,
         instance: Instance,
-        name="uDGP-base",
+        name="uDGP",
         log=True,
         max_gap=1e-4,
         env=None,

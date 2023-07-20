@@ -3,10 +3,7 @@
 Este módulo implementa o modelo M4 para instâncias do problema uDGP.
 """
 
-import gurobipy as gp
 from gurobipy import GRB
-
-from udgp.instances.base_instance import Instance
 
 from .base_model import BaseModel
 
@@ -15,7 +12,7 @@ class M4(BaseModel):
     """Modelo M4 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(M4, self).__init__(*args, **kwargs, name="uDGP-M4")
+        super(M4, self).__init__(*args, **kwargs)
 
         # VARIÁVEIS
         ## Erro no cálculo da distância
