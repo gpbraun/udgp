@@ -1,73 +1,77 @@
+"""Gabriel Braun, 2023
+
+Este módulo implementa o modelo M4 para instâncias do problema uDGP.
+"""
+
 import gurobipy as gp
 from gurobipy import GRB
+
+from udgp.instances.base_instance import Instance
 
 from .base_model import BaseModel
 
 
-def solve_M4(instance):
-    """Cria o modelo M4 no Gurobi para o problema da distâncias não associadas."""
-    model = BaseModel(instance)
+class M4(BaseModel):
+    """Modelo M4 para o uDGP."""
 
-    model.setParam("SolutionLimit", 1)
+    def __init__(self, *args, **kwargs):
+        super(M4, self).__init__(*args, **kwargs, name="uDGP-M4")
 
-    D = model.distances.max()
+        # VARIÁVEIS
+        ## Erro no cálculo da distância
+        self.p = self.addVars(
+            self.m,
+            name="p",
+            vtype=GRB.CONTINUOUS,
+            lb=-self.max_gap,
+            ub=self.max_gap,
+        )
+        ## Valor absoluto no erro do cálculo da distância
+        self.w = self.addVars(
+            self.m,
+            name="w",
+            vtype=GRB.CONTINUOUS,
+            lb=0,
+            ub=self.max_gap,
+        )
+        ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
+        self.z = self.addVars(
+            self.ijk_values(),
+            name="z",
+            vtype=GRB.CONTINUOUS,
+            lb=0,
+            ub=GRB.INFINITY,
+        )
 
-    # VARIÁVEIS
-    ## Erro no cálculo da distância
-    p = model.addMVar(model.m, name="p", vtype=GRB.CONTINUOUS, lb=-0.002, ub=+0.002)
-    ## Valor absoluto no erro do cálculo da distância
-    w = model.addMVar(model.m, name="w", vtype=GRB.CONTINUOUS, ub=0.002)
-    ## Distância k se ela é referente ao par de átomos i e j e 0 em caso contrátrio.
-    z = model.addVars(model.ijk_values(), name="z", vtype=GRB.CONTINUOUS)
+        # RESTRIÇÕES
+        distances = self.instance.distances
+        D = distances.max()
+        self.addConstrs(self.w[k] >= self.p[k] for k in self.k_values())
+        self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_values())
+        self.addConstrs(
+            -(1 - self.a[i, j, k]) * D + self.r[i, j] <= self.z[i, j, k]
+            for i, j, k in self.ijk_values()
+        )
+        self.addConstrs(
+            self.z[i, j, k] <= (1 - self.a[i, j, k]) * D + self.r[i, j]
+            for i, j, k in self.ijk_values()
+        )
+        self.addConstrs(
+            self.z[i, j, k] >= -self.a[i, j, k] * D for i, j, k in self.ijk_values()
+        )
+        self.addConstrs(
+            self.z[i, j, k] <= self.a[i, j, k] * D for i, j, k in self.ijk_values()
+        )
+        self.addConstrs(
+            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * D + (distances[k] + self.p[k])
+            for i, j, k in self.ijk_values()
+        )
+        self.addConstrs(
+            self.z[i, j, k] <= (1 - self.a[i, j, k]) * D + (distances[k] + self.p[k])
+            for i, j, k in self.ijk_values()
+        )
 
-    # OBJETIVO
-    model.setObjective(gp.quicksum(w), GRB.MINIMIZE)
+        # OBJETIVO
+        self.setObjective(self.w.sum(), GRB.MINIMIZE)
 
-    # RESTRIÇÕES
-    model.addConstrs(w[k] >= +p[k] for k in model.k_values())
-    model.addConstrs(w[k] >= -p[k] for k in model.k_values())
-    model.addConstrs(
-        -(1 - model.a[i, j, k]) * D + model.r[i, j] <= z[i, j, k]
-        for i, j, k in model.ijk_values()
-    )
-    model.addConstrs(
-        z[i, j, k] <= (1 - model.a[i, j, k]) * D + model.r[i, j]
-        for i, j, k in model.ijk_values()
-    )
-    model.addConstrs(
-        -model.a[i, j, k] * D <= z[i, j, k] for i, j, k in model.ijk_values()
-    )
-    model.addConstrs(
-        z[i, j, k] <= model.a[i, j, k] * D for i, j, k in model.ijk_values()
-    )
-    model.addConstrs(
-        -(1 - model.a[i, j, k]) * D + (model.distances[k] + p[k]) <= z[i, j, k]
-        for i, j, k in model.ijk_values()
-    )
-    model.addConstrs(
-        z[i, j, k] <= (1 - model.a[i, j, k]) * D + (model.distances[k] + p[k])
-        for i, j, k in model.ijk_values()
-    )
-
-    # model.relax()
-
-    print(f"Resolvendo modelo...")
-
-    # model.update()
-    # model.write('model.mps')
-
-    model.optimize()
-
-    print(f"Solução encontrada em: {model.Runtime:.2f} s")
-
-    for k in range(model.m):
-        for i in range(model.n - 1):
-            for j in range(i + 1, model.n):
-                if model.a[i, j, k].X > 0.1:
-                    print(
-                        f"k = {k+1} -> ({i+1},{j+1}). ({model.distances[k]} -> {model.r[i, j].X})"
-                    )
-
-    print(model.x.X)
-
-    return model.x.X, model.Runtime
+        self.update()

@@ -6,7 +6,6 @@ Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
 """
 
 import numpy as np
-from scipy.spatial.distance import pdist
 
 from .base_instance import Instance
 
@@ -122,13 +121,7 @@ def generate_random_coords(n: int) -> np.ndarray:
     return coords
 
 
-def calculate_distances_from_coords(coords: np.ndarray) -> np.ndarray:
-    """Retorna: lista ordenada de distâncias em uma estrutura 3D."""
-    return np.sort(pdist(coords, "euclidean"))
-
-
 def generate_random_instance(n: int) -> Instance:
     """Cria uma instância aleatória com n átomos."""
     coords = generate_random_coords(n)
-    distances = calculate_distances_from_coords(coords)
-    return Instance(coords, distances)
+    return Instance(coords)

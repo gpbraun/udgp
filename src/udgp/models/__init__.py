@@ -1,1 +1,1 @@
-from .model_4 import solve_M4
+from .model_4 import M4

@@ -7,16 +7,24 @@ import networkx as nx
 import numpy as np
 import py3Dmol
 from scipy.sparse import csr_matrix
+from scipy.spatial.distance import pdist
 from sklearn.neighbors import radius_neighbors_graph
+
+
+def calculate_distances_from_coords(coords: np.ndarray) -> np.ndarray:
+    """Retorna: lista ordenada de distâncias em uma estrutura 3D."""
+    return np.sort(pdist(coords, "euclidean"))
 
 
 class Instance:
     """Instância para o problema uDGP."""
 
-    def __init__(self, atoms: np.ndarray, distances: np.ndarray):
-        self.atoms = atoms
-        self.distances = distances
-        self.n = self.atoms.shape[0]
+    def __init__(self, coords: np.ndarray, distances: np.ndarray = None):
+        self.coords = coords
+        if not distances:
+            self.distances = calculate_distances_from_coords(coords)
+
+        self.n = self.coords.shape[0]
         self.m = self.distances.shape[0]
 
     def is_isomorphic(self, other) -> bool:
@@ -29,12 +37,12 @@ class Instance:
 
     def adjacency_matrix(self) -> csr_matrix:
         """Retorna: matriz de adjacência da instância"""
-        return radius_neighbors_graph(self.atoms, 1.8, mode="connectivity")
+        return radius_neighbors_graph(self.coords, 1.8, mode="connectivity")
 
     def xyz_str(self, title="Instância para uDGP") -> str:
         """Retorna: string com a representação da instância no formato xyz."""
         xyz_coords = [
-            f"C    {p[0]:.4f}    {p[1]:.4f}    {p[2]:.4f}" for p in self.atoms
+            f"C    {p[0]:.4f}    {p[1]:.4f}    {p[2]:.4f}" for p in self.coords
         ]
         return "\n".join([str(self.n), title, *xyz_coords])
 
