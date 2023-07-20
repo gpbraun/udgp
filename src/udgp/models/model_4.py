@@ -14,9 +14,9 @@ def solve_M4(instance):
 
     # VARIÁVEIS
     ## Erro no cálculo da distância
-    p = model.addMVar(model.m, name="p", vtype=GRB.CONTINUOUS, lb=-0.001, ub=+0.001)
+    p = model.addMVar(model.m, name="p", vtype=GRB.CONTINUOUS, lb=-0.002, ub=+0.002)
     ## Valor absoluto no erro do cálculo da distância
-    w = model.addMVar(model.m, name="w", vtype=GRB.CONTINUOUS, ub=0.001)
+    w = model.addMVar(model.m, name="w", vtype=GRB.CONTINUOUS, ub=0.002)
     ## Distância k se ela é referente ao par de átomos i e j e 0 em caso contrátrio.
     z = model.addVars(model.ijk_values(), name="z", vtype=GRB.CONTINUOUS)
 

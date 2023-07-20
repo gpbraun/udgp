@@ -1,4 +1,5 @@
 {
+  "editor.formatOnSave": true,
   "code-runner.runInTerminal": true,
   "code-runner.ignoreSelection": true,
   "python.formatting.provider": "black",
@@ -7,6 +8,7 @@
     "source.organizeImports": true
   },
   "files.exclude": {
-    "**/*.egg-info": true
-  }
+    "**/*.egg-info": true,
+    "**/__pycache__": true
+  },
 }

@@ -1,14 +1,12 @@
 """Gabriel Braun, 2023
 
-Este módulo implementa funções para geração de instâncias aleatórias do problema uDGP.
+Este módulo implementa funções para geração de instâncias aleatórias do uDGP.
 
 Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
 """
 
-import math
-from itertools import combinations
-
 import numpy as np
+from scipy.spatial.distance import pdist
 
 from .base_instance import Instance
 
@@ -90,7 +88,7 @@ def b_matrix_product(
     return product @ b_matrix(i, bond_lengths, bond_angles, torsion_angles)
 
 
-def calculate_atom_coords(
+def calculate_coords(
     n: int,
     bond_lengths: np.ndarray,
     bond_angles: np.ndarray,
@@ -113,34 +111,24 @@ def calculate_atom_coords(
     return atoms
 
 
-def calculate_vector_norms(vectors: np.ndarray) -> np.ndarray:
-    """Retorna: lista ordenada de normas a partir de uma lista de vetores 3D.
-
-    Referência: https://stackoverflow.com/questions/14758283
-    """
-    return np.sort(np.sqrt(np.einsum("ij,ij->i", vectors, vectors)))
-
-
-def calculate_distances_from_coords(atoms: np.ndarray) -> np.ndarray:
-    """Retorna: lista ordenada de distâncias em uma estrutura 3D."""
-    m = math.comb(atoms.shape[0], 2)
-
-    distance_vectors = np.empty((m, 3), dtype=np.float16)
-
-    for index, (atom_x, atom_y) in enumerate(combinations(atoms, 2)):
-        distance_vectors[index] = atom_x - atom_y
-
-    return calculate_vector_norms(distance_vectors)
-
-
-def generate_random_instance(n: int) -> Instance:
-    """Cria uma instância aleatória com n átomos."""
+def generate_random_coords(n: int) -> np.ndarray:
+    """Retorna: estrutura aleatória 3D com n átomos."""
     bond_lengths = np.random.choice(BOND_LENGTH_VALUES, size=(n - 1))
     bond_angles = np.random.choice(BOND_ANGLE_VALUES, size=(n - 2))
     torsion_angles = np.random.choice(TORSION_ANGLE_VALUES, size=(n - 3))
 
-    atoms = calculate_atom_coords(n, bond_lengths, bond_angles, torsion_angles)
+    coords = calculate_coords(n, bond_lengths, bond_angles, torsion_angles)
 
-    distances = calculate_distances_from_coords(atoms)
+    return coords
 
-    return Instance(atoms, distances)
+
+def calculate_distances_from_coords(coords: np.ndarray) -> np.ndarray:
+    """Retorna: lista ordenada de distâncias em uma estrutura 3D."""
+    return np.sort(pdist(coords, "euclidean"))
+
+
+def generate_random_instance(n: int) -> Instance:
+    """Cria uma instância aleatória com n átomos."""
+    coords = generate_random_coords(n)
+    distances = calculate_distances_from_coords(coords)
+    return Instance(coords, distances)
