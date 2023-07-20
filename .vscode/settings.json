@@ -5,5 +5,8 @@
   "python.analysis.typeCheckingMode": "off",
   "editor.codeActionsOnSave": {
     "source.organizeImports": true
+  },
+  "files.exclude": {
+    "**/*.egg-info": true
   }
 }
