@@ -1,0 +1,9 @@
+{
+  "code-runner.runInTerminal": true,
+  "code-runner.ignoreSelection": true,
+  "python.formatting.provider": "black",
+  "python.analysis.typeCheckingMode": "off",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
+  }
+}
