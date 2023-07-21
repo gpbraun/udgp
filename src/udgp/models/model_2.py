@@ -1,6 +1,6 @@
 """Gabriel Braun, 2023
 
-Este módulo implementa o modelo M4 para instâncias do problema uDGP.
+Este módulo implementa o modelo M2 para instâncias do problema uDGP.
 """
 
 from .model_1 import M1

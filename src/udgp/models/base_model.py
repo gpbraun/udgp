@@ -18,12 +18,13 @@ class BaseModel(gp.Model):
     def __init__(
         self,
         instance: Instance,
-        name="uDGP",
+        n: int | None = None,
+        fixed_coords: np.ndarray = np.zeros((1, 3)),
         log=True,
         max_gap=1e-4,
         env=None,
     ):
-        super(BaseModel, self).__init__(name, env)
+        super(BaseModel, self).__init__("uDGP", env)
 
         self.setParam("LogToConsole", log)
         self.setParam("MIPGap", max_gap)
@@ -32,7 +33,7 @@ class BaseModel(gp.Model):
         self.max_gap = max_gap
 
         self.instance = instance
-        self.n = instance.n
+        self.n = n if n is not None else instance.n
         self.m = instance.m
 
         # VARIÁVEIS
@@ -80,7 +81,8 @@ class BaseModel(gp.Model):
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
             for i, j in self.ij_values()
         )
-        self.addConstr(self.x[0] == np.zeros(3))
+        ## Átomos fixados
+        self.addConstr(self.x[: fixed_coords.shape[0]] == fixed_coords)
 
         self.update()
 
@@ -106,19 +108,17 @@ class BaseModel(gp.Model):
             for k in self.k_values():
                 yield i, j, k
 
-    def solution(self) -> Instance:
-        """Retorna: solução do modelo."""
+    def optimize(self, *args, **kwargs):
+        super(BaseModel, self).optimize(*args, **kwargs)
+
         if self.SolCount == 0:
-            return None
+            return
 
-        return Instance(
-            coords=self.x.X,
-            distances=np.array([self.r[ij].X for ij in self.ij_values()]).sort(),
-        )
+        self.instance.coords = self.x.X
 
-    def solution_is_isomorphic(self) -> bool:
-        """Retorna: verdadeiro se a entrada e a solução representam a mesma molécula."""
-        if self.SolCount == 0:
-            return False
-
-        return self.solution().is_isomorphic(self.instance)
+        idx = [
+            False if any(self.a[i, j, k].X == 1 for i, j in self.ij_values()) else True
+            for k in self.k_values()
+        ]
+        self.instance.distances = self.instance.distances[idx]
+        self.instance.m = np.count_nonzero(idx)

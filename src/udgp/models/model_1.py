@@ -1,6 +1,6 @@
 """Gabriel Braun, 2023
 
-Este módulo implementa o modelo M4 para instâncias do problema uDGP.
+Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
 from gurobipy import GRB
