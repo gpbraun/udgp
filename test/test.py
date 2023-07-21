@@ -11,7 +11,7 @@ instance_num = 100
 
 env = gp.Env()
 
-for gap in np.logspace(-1, -6, num=10, base=10, endpoint=True)[::-1]:
+for gap in [6.0e-4, 1.29e-5]:
     if gap == 0.1:
         continue
 
