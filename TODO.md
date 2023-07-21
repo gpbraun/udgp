@@ -13,7 +13,7 @@
 - [x] M2
 - [x] M5
 
-#### Heurísticas
+### Heurísticas
 
 - [ ] Modelo base para heurísticas
 - [ ] M3
@@ -24,7 +24,7 @@
 ### MIPGap e a qualidade e tempo da otimização
 
 - [ ] M1
-- [x] M4 (rodando)
+- [ ] M4
 
 ### Modelos (instâncias de 5 átomos)
 
@@ -37,7 +37,7 @@
 
 ### Heurísticas
 
-#### Tempo para encontrar um núcleo
+#### Tempo para encontrar um núcleo em função do número de átomos total
 
 - [ ] M3
 - [ ] M6
@@ -51,4 +51,9 @@
 
 - [ ] M3
 - [ ] M6
+
+## Figuras
+
+- [ ] Demonstração de duas estruturas diferentes com as mesmas distâncias.
+- [ ] Conversão da estrutura na matriz de adjecência e em um grafo.
 
