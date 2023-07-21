@@ -11,5 +11,4 @@
     "**/*.egg-info": true,
     "**/__pycache__": true
   },
-  "notebook.formatOnSave.enabled": false
 }

@@ -11,5 +11,6 @@ class M2(M1):
 
     def __init__(self, *args, **kwargs):
         super(M2, self).__init__(*args, **kwargs)
+        self.name = "uDGP-M2"
         self.relax()
         self.update()

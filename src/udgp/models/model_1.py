@@ -13,6 +13,7 @@ class M1(BaseModel):
 
     def __init__(self, *args, **kwargs):
         super(M1, self).__init__(*args, **kwargs)
+        self.name = "uDGP-M1"
 
         # VARIÁVEIS
         self.s = self.addVars(

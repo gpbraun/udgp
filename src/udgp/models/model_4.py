@@ -13,6 +13,7 @@ class M4(BaseModel):
 
     def __init__(self, *args, **kwargs):
         super(M4, self).__init__(*args, **kwargs)
+        self.name = "uDGP-M4"
 
         # VARIÁVEIS
         ## Erro no cálculo da distância

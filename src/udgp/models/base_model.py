@@ -22,6 +22,7 @@ class BaseModel(gp.Model):
         log=True,
         max_gap=1e-4,
         env=None,
+        name="uDGP-base"
     ):
         super(BaseModel, self).__init__("uDGP", env)
 
@@ -29,6 +30,7 @@ class BaseModel(gp.Model):
         self.setParam("MIPGap", max_gap)
         self.setParam("NonConvex", 2)
 
+        self.name = name
         self.max_gap = max_gap
 
         self.instance = instance
