@@ -19,7 +19,6 @@ class BaseModel(gp.Model):
         self,
         instance: Instance,
         n: int | None = None,
-        fixed_coords: np.ndarray = np.zeros((1, 3)),
         log=True,
         max_gap=1e-4,
         env=None,
@@ -82,7 +81,8 @@ class BaseModel(gp.Model):
             for i, j in self.ij_values()
         )
         ## Átomos fixados
-        self.addConstr(self.x[: fixed_coords.shape[0]] == fixed_coords)
+        coords = self.instance.coords
+        self.addConstr(self.x[: coords.shape[0]] == coords)
 
         self.update()
 

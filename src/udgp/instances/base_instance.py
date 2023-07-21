@@ -34,11 +34,11 @@ def coords_to_xyz_str(coords, title=" ") -> str:
     return "\n".join([str(coords.shape[0]), title, *xyz_coords])
 
 
-def coords_to_view(coords, bg_color="#000000") -> py3Dmol.view:
+def coords_to_view(coords, bg_color="#000000", alpha=0.0) -> py3Dmol.view:
     """Retorna: visualização da instância com py3Dmol."""
     xyz_str = coords_to_xyz_str(coords)
     view = py3Dmol.view(data=xyz_str)
-    view.setBackgroundColor(bg_color)
+    view.setBackgroundColor(bg_color, alpha)
     view.setStyle(
         {
             "stick": {"radius": 0.1},
@@ -55,7 +55,7 @@ class Instance:
         self,
         n: int,
         distances: np.ndarray = np.empty(0),
-        coords: np.ndarray | None = None,
+        coords: np.ndarray = np.zeros((1, 3)),
         input_coords: np.ndarray | None = None,
     ):
         self.n = n
@@ -64,6 +64,10 @@ class Instance:
         self.coords = coords
         self.input_coords = input_coords
 
+    def view(self) -> py3Dmol.view:
+        """Retorna: visualização da instância com py3Dmol."""
+        return coords_to_view(self.coords)
+
     def view_input(self) -> py3Dmol.view:
         """Retorna: visualização da instância com py3Dmol."""
         if self.input_coords is None:
@@ -71,16 +75,9 @@ class Instance:
 
         return coords_to_view(self.input_coords)
 
-    def view(self) -> py3Dmol.view:
-        """Retorna: visualização da instância com py3Dmol."""
-        if self.coords is None:
-            return self.view_input()
-
-        return coords_to_view(self.coords)
-
     def is_isomorphic(self) -> bool:
         """Retorna: verdadeiro as coordenadas representam a mesma molécula que o input."""
-        if self.coords is None or self.input_coords is None:
+        if self.input_coords is None:
             return False
 
         return coords_are_isomorphic(self.coords, self.input_coords)
