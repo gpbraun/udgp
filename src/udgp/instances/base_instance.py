@@ -3,13 +3,11 @@
 Este módulo implementa a classe base para instâncias do problema uDGP.
 """
 
-from itertools import chain, combinations, product
-
 import networkx as nx
 import numpy as np
 import py3Dmol
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import cdist, pdist
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import radius_neighbors_graph
 
@@ -57,14 +55,6 @@ def coords_to_view(coords, bg_color="#000000", alpha=0.2) -> py3Dmol.view:
     return view
 
 
-def calculate_norm(vectors: np.ndarray):
-    """Retorna a lista de normas a partir de uma lista de vetores.
-
-    Ref. https://stackoverflow.com/questions/14758283
-    """
-    return np.sort(np.sqrt(np.einsum("ij,ij->i", vectors, vectors))).astype("float16")
-
-
 class Instance:
     """Instância para o problema uDGP."""
 
@@ -104,8 +94,14 @@ class Instance:
         if self.input_coords is None:
             return
 
-        self.coords = split_coords(self.input_coords, core_size)[1]
-        # ISSO AQUI FOI FEITO PELA BIA MALUCA:
-        # As distâncias devem ser calculadas como foi feito no colab!!!
-        self.distances = np.sort(pdist(self.coords, "euclidean"))
+        remaining_coords, self.coords = split_coords(self.input_coords, core_size)
+
+        self.distances = np.sort(
+            np.concatenate(
+                [
+                    pdist(self.coords, "euclidean"),
+                    cdist(remaining_coords, self.coords, "euclidean"),
+                ]
+            )
+        )
         self.m = self.distances.shape[0]

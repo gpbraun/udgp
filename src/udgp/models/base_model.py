@@ -39,8 +39,7 @@ class BaseModel(gp.Model):
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
-        self.fixed_coords = self.instance.coords
-        self.fixed_coord_num = self.fixed_coords.shape[0]
+        fix_num = self.instance.coords.shape[0]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -51,7 +50,7 @@ class BaseModel(gp.Model):
         )
         ## Coordenadas do átomo i
         self.x = self.addMVar(
-            (self.n + self.fixed_coord_num, 3),
+            (self.n + fix_num, 3),
             name="x",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
@@ -87,7 +86,7 @@ class BaseModel(gp.Model):
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
             for i, j in self.ij_values()
         )
-        self.addConstr(self.x[: self.fixed_coord_num] == self.fixed_coords)
+        self.addConstr(self.x[:fix_num] == self.instance.coords)
 
         self.update()
 
@@ -104,15 +103,14 @@ class BaseModel(gp.Model):
 
     def ij_values(self) -> Iterator[int]:
         """Retorna: índices i, j."""
-        x = self.fixed_coord_num
+        fix_num = self.instance.coords.shape[0]
         # fixado, interno
-        for i in np.arange(x):
-            for j in np.arange(x, x + self.n):
+        for i in np.arange(fix_num):
+            for j in np.arange(fix_num, fix_num + self.n):
                 yield i, j
-
         # interno, interno
-        for i in np.arange(x, self.n + x - 1):
-            for j in np.arange(x + i, x + self.n):
+        for i in np.arange(fix_num, self.n + fix_num - 1):
+            for j in np.arange(fix_num + i, fix_num + self.n):
                 yield i, j
 
     def ijk_values(self) -> Iterator[int]:
