@@ -96,12 +96,17 @@ class Instance:
 
         remaining_coords, self.coords = split_coords(self.input_coords, core_size)
 
-        self.distances = np.sort(
-            np.concatenate(
+        if remaining_coords.shape[0] == 0:
+            distances = np.array([])
+        elif remaining_coords.shape[0] == 1:
+            distances = cdist(remaining_coords, self.coords, "euclidean").flatten()
+        else:
+            distances = np.concatenate(
                 [
-                    pdist(self.coords, "euclidean"),
-                    cdist(remaining_coords, self.coords, "euclidean"),
+                    pdist(remaining_coords, "euclidean"),
+                    cdist(remaining_coords, self.coords, "euclidean").flatten(),
                 ]
             )
-        )
+
+        self.distances = np.sort(distances)
         self.m = self.distances.shape[0]
