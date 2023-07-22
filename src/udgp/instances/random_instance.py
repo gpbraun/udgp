@@ -111,19 +111,16 @@ def calculate_coords(
     return atoms
 
 
-def generate_random_coords(n: int) -> np.ndarray:
-    """Retorna: estrutura aleatória 3D com n átomos."""
-    bond_lengths = np.random.choice(BOND_LENGTH_VALUES, size=(n - 1))
-    bond_angles = np.random.choice(BOND_ANGLE_VALUES, size=(n - 2))
-    torsion_angles = np.random.choice(TORSION_ANGLE_VALUES, size=(n - 3))
+def generate_random_instance(n: int, seed: int = None) -> Instance:
+    """Cria uma instância aleatória com n átomos."""
+    rng = np.random.default_rng(seed)
+
+    bond_lengths = rng.choice(BOND_LENGTH_VALUES, size=(n - 1))
+    bond_angles = rng.choice(BOND_ANGLE_VALUES, size=(n - 2))
+    torsion_angles = rng.choice(TORSION_ANGLE_VALUES, size=(n - 3))
 
     coords = calculate_coords(n, bond_lengths, bond_angles, torsion_angles)
 
-    return coords
-
-
-def generate_random_instance(n: int) -> Instance:
-    """Cria uma instância aleatória com n átomos."""
-    coords = generate_random_coords(n)
     distances = np.sort(pdist(coords, "euclidean"))
+
     return Instance(n=n, distances=distances, input_coords=coords)

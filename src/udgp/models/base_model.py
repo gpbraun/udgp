@@ -3,6 +3,7 @@
 Este módulo implementa o modelo base para instâncias do problema uDGP.
 """
 
+import copy
 from collections.abc import Iterator
 
 import gurobipy as gp
@@ -22,7 +23,7 @@ class BaseModel(gp.Model):
         log=True,
         max_gap=1e-4,
         env=None,
-        name="uDGP-base"
+        name="uDGP-base",
     ):
         super(BaseModel, self).__init__("uDGP", env)
 
@@ -33,9 +34,13 @@ class BaseModel(gp.Model):
         self.name = name
         self.max_gap = max_gap
 
-        self.instance = instance
+        self.instance = copy.copy(instance)
         self.n = n if n is not None else instance.n
-        self.m = instance.m
+        self.m = self.instance.m
+
+        ## ÁTOMOS FIXADOS
+        self.fixed_coords = self.instance.coords
+        self.fixed_coord_num = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -46,7 +51,7 @@ class BaseModel(gp.Model):
         )
         ## Coordenadas do átomo i
         self.x = self.addMVar(
-            (self.n, 3),
+            (self.n + self.fixed_coord_num, 3),
             name="x",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
@@ -82,9 +87,7 @@ class BaseModel(gp.Model):
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
             for i, j in self.ij_values()
         )
-        ## Átomos fixados
-        coords = self.instance.coords
-        self.addConstr(self.x[: coords.shape[0]] == coords)
+        self.addConstr(self.x[: self.fixed_coord_num] == self.fixed_coords)
 
         self.update()
 
@@ -101,8 +104,16 @@ class BaseModel(gp.Model):
 
     def ij_values(self) -> Iterator[int]:
         """Retorna: índices i, j."""
-        for i, j in np.transpose(np.triu_indices(self.n, 1)):
-            yield i, j
+        x = self.fixed_coord_num
+        # fixado, interno
+        for i in np.arange(x):
+            for j in np.arange(x, x + self.n):
+                yield i, j
+
+        # interno, interno
+        for i in np.arange(x, self.n + x - 1):
+            for j in np.arange(x + i, x + self.n):
+                yield i, j
 
     def ijk_values(self) -> Iterator[int]:
         """Retorna: índices i, j, k."""
@@ -111,7 +122,12 @@ class BaseModel(gp.Model):
                 yield i, j, k
 
     def optimize(self, *args, **kwargs):
+        """Otimiza o modelo e atualiza a instância."""
         super(BaseModel, self).optimize(*args, **kwargs)
+
+        if self.Status == GRB.INFEASIBLE:
+            print("Modelo inviável.")
+            return
 
         if self.SolCount == 0:
             return
