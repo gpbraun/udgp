@@ -98,7 +98,9 @@ def calculate_coords(
 
     Retorna: matriz de coordenadas dos átomos.
     """
-    atoms = np.array(
+    # coords = np.empty((n, 3))
+
+    coords = np.array(
         [
             (
                 b_matrix_product(i, bond_lengths, bond_angles, torsion_angles)
@@ -108,19 +110,19 @@ def calculate_coords(
         ]
     )
 
-    return atoms
+    return np.unique(coords.round(decimals=4), axis=0)
 
 
 def generate_random_instance(n: int, seed: int = None) -> Instance:
     """Cria uma instância aleatória com n átomos."""
     rng = np.random.default_rng(seed)
 
-    bond_lengths = rng.choice(BOND_LENGTH_VALUES, size=(n - 1))
-    bond_angles = rng.choice(BOND_ANGLE_VALUES, size=(n - 2))
-    torsion_angles = rng.choice(TORSION_ANGLE_VALUES, size=(n - 3))
+    bond_lengths = rng.choice(BOND_LENGTH_VALUES, size=(2 * n))
+    bond_angles = rng.choice(BOND_ANGLE_VALUES, size=(2 * n))
+    torsion_angles = rng.choice(TORSION_ANGLE_VALUES, size=(2 * n))
 
     coords = calculate_coords(n, bond_lengths, bond_angles, torsion_angles)
 
     distances = np.sort(pdist(coords, "euclidean"))
 
-    return Instance(n=n, distances=distances, input_coords=coords)
+    return Instance(n=coords.shape[0], distances=distances, input_coords=coords)

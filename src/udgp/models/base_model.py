@@ -130,11 +130,10 @@ class BaseModel(gp.Model):
         if self.SolCount == 0:
             return
 
-        self.instance.coords = self.x.X
-
         idx = [
             False if any(self.a[i, j, k].X == 1 for i, j in self.ij_values()) else True
             for k in self.k_values()
         ]
         self.instance.distances = self.instance.distances[idx]
         self.instance.m = np.count_nonzero(idx)
+        self.instance.coords = self.x.X
