@@ -20,14 +20,13 @@ class BaseModel(gp.Model):
         self,
         instance: Instance,
         n: int | None = None,
-        log=True,
         max_gap=1e-4,
-        env=None,
         name="uDGP-base",
+        env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
 
-        self.setParam("LogToConsole", log)
+        self.setParam("LogToConsole", False)
         self.setParam("MIPGap", max_gap)
         self.setParam("NonConvex", 2)
 
@@ -39,7 +38,8 @@ class BaseModel(gp.Model):
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
-        fix_num = self.instance.coords.shape[0]
+        self.fixed_coords = self.instance.get_random_coords(n=5)
+        fixed_num = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -50,7 +50,7 @@ class BaseModel(gp.Model):
         )
         ## Coordenadas do átomo i
         self.x = self.addMVar(
-            (self.n + fix_num, 3),
+            (self.n + fixed_num, 3),
             name="x",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
@@ -86,7 +86,7 @@ class BaseModel(gp.Model):
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
             for i, j in self.ij_values()
         )
-        self.addConstr(self.x[:fix_num] == self.instance.coords)
+        self.addConstr(self.x[:fixed_num] == self.fixed_coords)
 
         self.update()
 
@@ -103,14 +103,14 @@ class BaseModel(gp.Model):
 
     def ij_values(self) -> Iterator[int]:
         """Retorna: índices i, j."""
-        fix_num = self.instance.coords.shape[0]
+        n_fixed = self.fixed_coords.shape[0]
         # fixado, interno
-        for i in np.arange(fix_num):
-            for j in np.arange(fix_num, fix_num + self.n):
+        for i in np.arange(n_fixed):
+            for j in np.arange(n_fixed, n_fixed + self.n):
                 yield i, j
         # interno, interno
-        for i in np.arange(fix_num, self.n + fix_num - 1):
-            for j in np.arange(fix_num + i, fix_num + self.n):
+        for i in np.arange(n_fixed, self.n + n_fixed - 1):
+            for j in np.arange(n_fixed + i, n_fixed + self.n):
                 yield i, j
 
     def ijk_values(self) -> Iterator[int]:
@@ -119,9 +119,10 @@ class BaseModel(gp.Model):
             for k in self.k_values():
                 yield i, j, k
 
-    def optimize(self, *args, **kwargs):
+    def optimize(self, log=False):
         """Otimiza o modelo e atualiza a instância."""
-        super(BaseModel, self).optimize(*args, **kwargs)
+        self.setParam("LogToConsole", True)
+        super(BaseModel, self).optimize()
 
         if self.Status == GRB.INFEASIBLE:
             print("Modelo inviável.")
@@ -136,4 +137,5 @@ class BaseModel(gp.Model):
         ]
         self.instance.distances = self.instance.distances[idx]
         self.instance.m = np.count_nonzero(idx)
-        self.instance.coords = self.x.X
+
+        self.instance.coords = np.concatenate([self.instance.coords, self.x.X])

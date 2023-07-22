@@ -15,7 +15,7 @@
 
 ### Heurísticas
 
-- [ ] Modelo base para heurísticas
+- [x] Modelo base para heurísticas
 - [ ] M3
 - [ ] M6
 

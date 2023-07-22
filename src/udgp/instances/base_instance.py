@@ -89,12 +89,22 @@ class Instance:
 
         return coords_are_isomorphic(self.coords, self.input_coords)
 
-    def mock_core(self, core_size: int = 5):
+    def get_random_coords(self, n=4) -> np.ndarray:
+        """Retorna: n coordenadas já fixadas aletóriamente."""
+        if n >= self.coords.shape[0]:
+            coords = self.coords
+            self.coords = np.empty((0, 3))
+            return coords
+
+        self.coords, sample_coords = split_coords(self.coords, n)
+        return sample_coords
+
+    def mock_core(self, n_core=5):
         """Transforma a instância em um núcleo para testes de heurísticas."""
         if self.input_coords is None:
             return
 
-        remaining_coords, self.coords = split_coords(self.input_coords, core_size)
+        remaining_coords, self.coords = split_coords(self.input_coords, n_core)
 
         if remaining_coords.shape[0] == 0:
             distances = np.array([])
