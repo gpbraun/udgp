@@ -38,7 +38,7 @@ class BaseModel(gp.Model):
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
-        self.fixed_coords = self.instance.get_random_coords(n=5)
+        self.fixed_coords = self.instance.get_random_coords(n=4)
         fixed_num = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
@@ -121,7 +121,8 @@ class BaseModel(gp.Model):
 
     def optimize(self, log=False):
         """Otimiza o modelo e atualiza a instância."""
-        self.setParam("LogToConsole", True)
+        self.setParam("LogToConsole", log)
+        # Model.optimize()
         super(BaseModel, self).optimize()
 
         if self.Status == GRB.INFEASIBLE:
