@@ -3,8 +3,8 @@
 Este módulo implementa o modelo base para instâncias do problema uDGP.
 """
 
-import copy
 from collections.abc import Iterator
+from copy import copy
 
 import gurobipy as gp
 import numpy as np
@@ -26,14 +26,14 @@ class BaseModel(gp.Model):
     ):
         super(BaseModel, self).__init__("uDGP", env)
 
-        self.setParam("LogToConsole", False)
-        self.setParam("MIPGap", max_gap)
-        self.setParam("NonConvex", 2)
+        self.Params.LogToConsole = False
+        self.Params.MIPGap = max_gap
+        self.Params.NonConvex = 2
 
         self.name = name
         self.max_gap = max_gap
 
-        self.instance = copy.copy(instance)
+        self.instance = copy(instance)
         self.n = n if n is not None else instance.n
         self.m = self.instance.m
 
@@ -121,7 +121,7 @@ class BaseModel(gp.Model):
 
     def optimize(self, log=False):
         """Otimiza o modelo e atualiza a instância."""
-        self.setParam("LogToConsole", log)
+        self.Params.LogToConsole = log
         # Model.optimize()
         super(BaseModel, self).optimize()
 
@@ -138,5 +138,4 @@ class BaseModel(gp.Model):
         ]
         self.instance.distances = self.instance.distances[idx]
         self.instance.m = np.count_nonzero(idx)
-
-        self.instance.coords = np.concatenate([self.instance.coords, self.x.X])
+        self.instance.add_coords(self.x.X)

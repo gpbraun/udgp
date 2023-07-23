@@ -89,14 +89,16 @@ class Instance:
 
         return coords_are_isomorphic(self.coords, self.input_coords)
 
+    def add_coords(self, new_coords):
+        coords = np.concatenate([self.coords, new_coords])
+        self.coords = np.unique(coords.round(decimals=4), axis=0)
+
     def get_random_coords(self, n=4) -> np.ndarray:
         """Retorna: n coordenadas já fixadas aletóriamente."""
         if n >= self.coords.shape[0]:
-            coords = self.coords
-            self.coords = np.empty((0, 3))
-            return coords
+            return self.coords
 
-        self.coords, sample_coords = split_coords(self.coords, n)
+        sample_coords = split_coords(self.coords, n)[1]
         return sample_coords
 
     def mock_core(self, n_core=5):
