@@ -11,6 +11,8 @@ from scipy.spatial.distance import cdist, pdist
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import radius_neighbors_graph
 
+START_COORDS = np.array([[0.0, 0.0, 0.0]])
+
 
 def split_coords(coords: np.ndarray, split_size: int):
     """Retorna: coordenadas divididas."""
@@ -44,12 +46,12 @@ def coords_to_xyz_str(coords, title="uDGP instance") -> str:
 def coords_to_view(coords, bg_color="#000000", alpha=0.2) -> py3Dmol.view:
     """Retorna: visualização da instância com py3Dmol."""
     xyz_str = coords_to_xyz_str(coords)
-    view = py3Dmol.view(data=xyz_str, width=300, height=300)
+    view = py3Dmol.view(data=xyz_str, width=400, height=350)
     view.setBackgroundColor(bg_color, alpha)
     view.setStyle(
         {
-            "stick": {"radius": 0.1},
-            "sphere": {"scale": 0.2},
+            "stick": {"radius": 0.1, "color": "#cbd5e1"},
+            "sphere": {"scale": 0.2, "color": "#60a5fa"},
         }
     )
     return view
@@ -62,14 +64,20 @@ class Instance:
         self,
         n: int,
         distances: np.ndarray = np.empty(0),
-        coords: np.ndarray = np.zeros((1, 3)),
+        coords: np.ndarray = START_COORDS,
+        input_distances: np.ndarray | None = None,
         input_coords: np.ndarray | None = None,
     ):
         self.n = n
         self.m = distances.shape[0]
         self.distances = distances
         self.coords = coords
+
         self.input_coords = input_coords
+        if input_distances is None:
+            self.input_distances = distances
+        else:
+            self.input_distances = distances
 
     def view(self) -> py3Dmol.view:
         """Retorna: visualização da instância com py3Dmol."""
@@ -81,6 +89,18 @@ class Instance:
             return
 
         return coords_to_view(self.input_coords)
+
+    def is_solved(self) -> bool:
+        """Retorna: verdadeiro se as distâncias do input são as mesmas da da solução."""
+        distances = pdist(self.coords, "euclidean")
+
+        if distances.shape != self.input_distances.shape:
+            return False
+
+        return (
+            np.sort(distances.round(decimals=2))
+            == np.sort(self.input_distances.round(decimals=2))
+        ).all()
 
     def is_isomorphic(self) -> bool:
         """Retorna: verdadeiro as coordenadas representam a mesma molécula que o input."""

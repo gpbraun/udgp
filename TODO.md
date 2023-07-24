@@ -55,5 +55,8 @@
 ## Figuras
 
 - [ ] Demonstração de duas estruturas diferentes com as mesmas distâncias.
-- [ ] Conversão da estrutura na matriz de adjecência e em um grafo.
+- [ ] Conversão da estrutura na matriz de adjacência e em um grafo.
+- [ ] Histograma com as distâncias de uma estrutura com vários átomos.
+
+
 

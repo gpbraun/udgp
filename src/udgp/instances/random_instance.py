@@ -125,4 +125,8 @@ def generate_random_instance(n: int, seed: int = None) -> Instance:
 
     distances = np.sort(pdist(coords, "euclidean"))
 
-    return Instance(n=coords.shape[0], distances=distances, input_coords=coords)
+    return Instance(
+        n=coords.shape[0],
+        distances=distances,
+        input_coords=coords,
+    )

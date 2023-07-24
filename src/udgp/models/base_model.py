@@ -21,7 +21,7 @@ class BaseModel(gp.Model):
         instance: Instance,
         n: int | None = None,
         max_gap=1e-4,
-        name="uDGP-base",
+        previous_a=None,
         env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
@@ -30,15 +30,12 @@ class BaseModel(gp.Model):
         self.Params.MIPGap = max_gap
         self.Params.NonConvex = 2
 
-        self.name = name
-        self.max_gap = max_gap
-
         self.instance = copy(instance)
-        self.n = n if n is not None else instance.n
+        self.n = n if n is not None else instance.n - 1
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
-        self.fixed_coords = self.instance.get_random_coords(n=4)
+        self.fixed_coords = self.instance.get_random_coords(n=10)
         fixed_num = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
@@ -87,6 +84,12 @@ class BaseModel(gp.Model):
             for i, j in self.ij_values()
         )
         self.addConstr(self.x[:fixed_num] == self.fixed_coords)
+        # CORE
+        if previous_a is not None:
+            for a_ijk in previous_a:
+                self.addConstr(
+                    gp.quicksum(self.a[ijk] for ijk in a_ijk) <= len(a_ijk) - 1
+                )
 
         self.update()
 
@@ -119,10 +122,16 @@ class BaseModel(gp.Model):
             for k in self.k_values():
                 yield i, j, k
 
+    def a_ijk_values(self) -> Iterator[int]:
+        """Retorna: índices i, j, k dos valores de a selecionados."""
+        for i, j, k in self.ijk_values():
+            if self.a[i, j, k].X == 1:
+                yield i, j, k
+
     def optimize(self, log=False):
         """Otimiza o modelo e atualiza a instância."""
         self.Params.LogToConsole = log
-        # Model.optimize()
+
         super(BaseModel, self).optimize()
 
         if self.Status == GRB.INFEASIBLE:

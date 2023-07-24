@@ -13,7 +13,6 @@ class M4(BaseModel):
 
     def __init__(self, *args, **kwargs):
         super(M4, self).__init__(*args, **kwargs)
-        self.name = "uDGP-M4"
 
         # VARIÁVEIS
         ## Erro no cálculo da distância
@@ -21,8 +20,8 @@ class M4(BaseModel):
             self.m,
             name="p",
             vtype=GRB.CONTINUOUS,
-            lb=-self.max_gap,
-            ub=self.max_gap,
+            lb=-self.Params.MIPGap,
+            ub=self.Params.MIPGap,
         )
         ## Valor absoluto no erro do cálculo da distância
         self.w = self.addVars(
@@ -30,7 +29,7 @@ class M4(BaseModel):
             name="w",
             vtype=GRB.CONTINUOUS,
             lb=0,
-            ub=self.max_gap,
+            ub=self.Params.MIPGap,
         )
         ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
         self.z = self.addVars(
