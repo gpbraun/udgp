@@ -16,8 +16,8 @@ f = open("bin\\weekend_out.txt", "w")
 models = {
     "M4": M4,
     "M5": M5,
-    "M2": M2,
-    "M1": M1,
+    # "M2": M2,
+    # "M1": M1,
 }
 
 
@@ -38,16 +38,16 @@ for name, M in models.items():
     newprint("=" * 50, file=f)
     newprint(name, file=f)
     newprint("=" * 50, file=f)
-    for n in [10, 20, 50, 100, 200, 300, 400]:
+    for n in [500, 1000, 2000]:
         newprint(f"n = {n}", file=f)
         t = []
         timeout = []
 
         for i in track(range(instance_num)):
             instance = generate_random_instance(N)
-            model = M(instance, n=5, log=False, env=env)
+            model = M(instance, n=4, env=env)
 
-            model.setParam("TimeLimit", 60 * 60)
+            model.setParam("TimeLimit", 5 * 60)
 
             model.optimize()
 
@@ -78,7 +78,7 @@ for name, M in models.items():
     newprint("=" * 50, file=f)
     newprint(name, file=f)
     newprint("=" * 50, file=f)
-    for gap in np.logspace(-1, -5, 10, endpoint=True, base=10):
+    for gap in [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]:
         newprint(f"max_gap = {gap:e}", file=f)
         t = []
         s = []
@@ -86,9 +86,9 @@ for name, M in models.items():
 
         for i in track(range(instance_num)):
             instance = generate_random_instance(N)
-            model = M(instance, max_gap=gap, log=False, env=env)
+            model = M(instance, max_gap=gap, env=env)
 
-            model.setParam("TimeLimit", 10 * 60)
+            model.setParam("TimeLimit", 5 * 60)
 
             model.optimize()
 
