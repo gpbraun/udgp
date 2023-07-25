@@ -3,6 +3,8 @@
 Este módulo implementa a classe base para instâncias do problema uDGP.
 """
 
+from copy import deepcopy
+
 import networkx as nx
 import numpy as np
 import py3Dmol
@@ -82,7 +84,7 @@ class Instance:
         self.freq = freq
         self.coords = START_COORDS
         self.input_dist = dist
-        self.input_freq = freq
+        self.input_freq = deepcopy(freq)
         self.input_coords = coords
 
     @property
@@ -95,6 +97,16 @@ class Instance:
         """Retorna: número de átomos fixados."""
         return self.coords.shape[0]
 
+    @property
+    def all_dist(self) -> np.ndarray:
+        """Retorna: lista completa (ordenada) de distâncias remanescentes."""
+        return np.repeat(self.dist, self.freq)
+
+    @property
+    def input_all_dist(self) -> np.ndarray:
+        """Retorna: lista completa (ordenada) de distâncias de entrada."""
+        return np.repeat(self.input_dist, self.input_freq)
+
     def view(self) -> py3Dmol.view:
         """Retorna: visualização da instância com py3Dmol."""
         return coords_to_view(self.coords)
@@ -106,18 +118,23 @@ class Instance:
 
         return coords_to_view(self.input_coords)
 
-    def is_solved(self, threshold=1e-2) -> bool:
+    def is_solved(self, threshold=1e-3) -> bool:
         """Retorna: verdadeiro se as distâncias do input são as mesmas da da solução.
 
         Referência: LIGA
         """
-        distances = coords_to_dist(self.coords)
-        input_distances = coords_to_dist(self.input_coords)
+        print("olá")
+        solution_all_dist = coords_to_dist(self.coords)
 
-        if distances.shape != input_distances.shape:
+        if solution_all_dist.shape != self.input_all_dist.shape:
+            print(solution_all_dist)
+            print(self.input_all_dist)
             return False
 
-        return np.var(distances - input_distances) < threshold
+        var = np.var(solution_all_dist - self.input_all_dist) < threshold
+        print(var)
+
+        return var < threshold
 
     def is_isomorphic(self) -> bool:
         """Retorna: verdadeiro as coordenadas representam a mesma molécula que o input."""
@@ -129,7 +146,9 @@ class Instance:
     def reset(self) -> None:
         """Reseta a instância para o estado inicial."""
         self.dist = self.input_dist
+        print(f"{self.dist} -> {self.input_dist}")
         self.freq = self.input_freq
+        print(f"{self.freq} -> {self.input_freq}")
         self.coords = START_COORDS
 
     def add_coords(self, new_coords) -> None:
@@ -155,7 +174,10 @@ class Instance:
         sample_coords = split_coords(self.coords, n)[1]
         return sample_coords
 
-    def remove_zero_freq(self):
+    def use_distances(self, indexes):
+        for k in indexes:
+            self.freq[k] -= 1
+
         self.dist = self.dist[self.freq != 0]
         self.freq = self.freq[self.freq != 0]
 

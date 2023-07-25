@@ -4,7 +4,6 @@ Este módulo implementa o modelo base para instâncias do problema uDGP.
 """
 
 from collections.abc import Iterator
-from copy import deepcopy
 
 import gurobipy as gp
 import numpy as np
@@ -35,7 +34,7 @@ class BaseModel(gp.Model):
         self.Params.FeasibilityTol = max_tol
         self.Params.OptimalityTol = max_tol
 
-        self.instance = deepcopy(instance)
+        self.instance = instance
         self.n = n if n is not None else instance.n - instance.fixed_n
         self.m = self.instance.m
 
@@ -149,8 +148,5 @@ class BaseModel(gp.Model):
         if self.SolCount == 0:
             return
 
-        for i, j, k in self.a_ijk_values():
-            self.instance.freq[k] -= 1
-        self.instance.remove_zero_freq()
-
+        self.instance.use_distances([k for i, j, k in self.a_ijk_values()])
         self.instance.add_coords(self.x.X)

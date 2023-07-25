@@ -54,7 +54,7 @@
 
 ## Figuras
 
-- [ ] Demonstração de duas estruturas diferentes com as mesmas distâncias.
+- [ ] Demonstração de duas estruturas diferentes com as mesmas distâncias. Bons exemplos: cicloexano e os dois triângulos; navezinha.
 - [ ] Conversão da estrutura na matriz de adjacência e em um grafo.
 - [ ] Histograma com as distâncias de uma estrutura com vários átomos.
 
