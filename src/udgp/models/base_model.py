@@ -10,7 +10,7 @@ import gurobipy as gp
 import numpy as np
 from gurobipy import GRB
 
-from udgp.instances.base_instance import Instance
+from udgp.instances.instance import Instance
 
 
 class BaseModel(gp.Model):
