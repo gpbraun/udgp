@@ -41,7 +41,7 @@ class M4(BaseModel):
         )
 
         # RESTRIÇÕES
-        distances = self.instance.distances
+        distances = self.instance.dist
         D = distances.max()
         self.addConstrs(self.w[k] >= self.p[k] for k in self.k_values())
         self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_values())

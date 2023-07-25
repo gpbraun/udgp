@@ -1,1 +1,1 @@
-from .random_instance import generate_random_instance
+from .random_instance import random_instance

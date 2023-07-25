@@ -11,6 +11,8 @@ from scipy.spatial.distance import cdist, pdist
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import radius_neighbors_graph
 
+from .random_instance import random_coords
+
 START_COORDS = np.array([[0.0, 0.0, 0.0]])
 
 
@@ -63,21 +65,30 @@ class Instance:
     def __init__(
         self,
         n: int,
-        distances: np.ndarray = np.empty(0),
+        dist: np.ndarray,
+        freq: np.ndarray,
         coords: np.ndarray = START_COORDS,
-        input_distances: np.ndarray | None = None,
+        input_freq: np.ndarray | None = None,
         input_coords: np.ndarray | None = None,
     ):
         self.n = n
-        self.m = distances.shape[0]
-        self.distances = distances
+        self.dist = dist
+
+        self.freq = freq
         self.coords = coords
 
+        self.input_freq = input_freq
         self.input_coords = input_coords
-        if input_distances is None:
-            self.input_distances = distances
-        else:
-            self.input_distances = distances
+
+    @property
+    def m(self) -> int:
+        """Retorna: número de distâncias."""
+        return self.dist.shape[0]
+
+    @property
+    def fixed_n(self) -> int:
+        """Retorna: número de átomos fixados."""
+        return self.coords.shape[0]
 
     def view(self) -> py3Dmol.view:
         """Retorna: visualização da instância com py3Dmol."""
@@ -91,16 +102,17 @@ class Instance:
         return coords_to_view(self.input_coords)
 
     def is_solved(self) -> bool:
-        """Retorna: verdadeiro se as distâncias do input são as mesmas da da solução."""
-        distances = pdist(self.coords, "euclidean")
+        """Retorna: verdadeiro se as distâncias do input são as mesmas da da solução.
 
-        if distances.shape != self.input_distances.shape:
+        Ref.: LIGA
+        """
+        distances = pdist(self.coords, "euclidean")
+        input_distances = pdist(self.input_coords, "euclidean")
+
+        if distances.shape != input_distances.shape:
             return False
 
-        return (
-            np.sort(distances.round(decimals=2))
-            == np.sort(self.input_distances.round(decimals=2))
-        ).all()
+        return np.var(distances - input_distances) < 1e-2
 
     def is_isomorphic(self) -> bool:
         """Retorna: verdadeiro as coordenadas representam a mesma molécula que o input."""
@@ -113,6 +125,17 @@ class Instance:
         coords = np.concatenate([self.coords, new_coords])
         self.coords = np.unique(coords.round(decimals=4), axis=0)
 
+    def add_random_core(self, n=5):
+        # while True:
+        core_coords = random_coords(n)
+        core_dist = pdist(core_coords, "euclidean").round(3)
+
+        for core_distance in core_dist:
+            for k in range(self.m):
+                if abs(core_distance - self.dist[k]) < 1e-2:
+                    self.freq[k] -= 1
+                    break
+
     def get_random_coords(self, n=4) -> np.ndarray:
         """Retorna: n coordenadas já fixadas aletóriamente."""
         if n >= self.coords.shape[0]:
@@ -121,24 +144,49 @@ class Instance:
         sample_coords = split_coords(self.coords, n)[1]
         return sample_coords
 
-    def mock_core(self, n_core=5):
-        """Transforma a instância em um núcleo para testes de heurísticas."""
-        if self.input_coords is None:
-            return
+    def remove_zero_freq(self):
+        self.dist = self.dist[self.freq != 0]
+        self.freq = self.freq[self.freq != 0]
 
-        remaining_coords, self.coords = split_coords(self.input_coords, n_core)
+    # def mock_core(self, n_core=5):
+    #     """Transforma a instância em um núcleo para testes de heurísticas."""
+    #     if self.input_coords is None:
+    #         return
 
-        if remaining_coords.shape[0] == 0:
-            distances = np.array([])
-        elif remaining_coords.shape[0] == 1:
-            distances = cdist(remaining_coords, self.coords, "euclidean").flatten()
+    #     remaining_coords, self.coords = split_coords(self.input_coords, n_core)
+
+    #     if remaining_coords.shape[0] == 0:
+    #         distances = np.array([])
+    #     elif remaining_coords.shape[0] == 1:
+    #         distances = cdist(remaining_coords, self.coords, "euclidean").flatten()
+    #     else:
+    #         distances = np.concatenate(
+    #             [
+    #                 pdist(remaining_coords, "euclidean"),
+    #                 cdist(remaining_coords, self.coords, "euclidean").flatten(),
+    #             ]
+    #         )
+
+    #     self.distances = np.sort(distances)
+    #     self.m = self.distances.shape[0]
+
+    @classmethod
+    def from_coords(cls, coords, freq=True, start_coords=START_COORDS):
+        """Retorna: instância referentes às coordenadas fornecidas."""
+        all_distances = pdist(coords, "euclidean").round(3)
+        all_distances.sort()
+
+        if freq:
+            dist, freq = np.unique(all_distances, return_counts=True)
         else:
-            distances = np.concatenate(
-                [
-                    pdist(remaining_coords, "euclidean"),
-                    cdist(remaining_coords, self.coords, "euclidean").flatten(),
-                ]
-            )
+            dist = all_distances
+            freq = np.full_like(dist, fill_value=1)
 
-        self.distances = np.sort(distances)
-        self.m = self.distances.shape[0]
+        return cls(
+            n=coords.shape[0],
+            dist=dist,
+            freq=freq,
+            coords=start_coords,
+            input_freq=freq,
+            input_coords=coords,
+        )

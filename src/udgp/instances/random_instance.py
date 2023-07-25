@@ -88,17 +88,16 @@ def b_matrix_product(
     return product @ b_matrix(i, bond_lengths, bond_angles, torsion_angles)
 
 
-def calculate_coords(
-    n: int,
-    bond_lengths: np.ndarray,
-    bond_angles: np.ndarray,
-    torsion_angles: np.ndarray,
-) -> np.ndarray:
+def random_coords(n: int, seed: int = None) -> np.ndarray:
     """Define as coordenadas dos átomos a partir dos comprimentos de ligação, ângulos de ligação e ângulos de torção.
 
     Retorna: matriz de coordenadas dos átomos.
     """
-    # coords = np.empty((n, 3))
+    rng = np.random.default_rng(seed)
+
+    bond_lengths = rng.choice(BOND_LENGTH_VALUES, size=(2 * n))
+    bond_angles = rng.choice(BOND_ANGLE_VALUES, size=(2 * n))
+    torsion_angles = rng.choice(TORSION_ANGLE_VALUES, size=(2 * n))
 
     coords = np.array(
         [
@@ -113,20 +112,8 @@ def calculate_coords(
     return np.unique(coords.round(decimals=4), axis=0)
 
 
-def generate_random_instance(n: int, seed: int = None) -> Instance:
+def random_instance(n: int, seed: int = None, freq=True) -> Instance:
     """Cria uma instância aleatória com n átomos."""
-    rng = np.random.default_rng(seed)
+    coords = random_coords(n, seed)
 
-    bond_lengths = rng.choice(BOND_LENGTH_VALUES, size=(2 * n))
-    bond_angles = rng.choice(BOND_ANGLE_VALUES, size=(2 * n))
-    torsion_angles = rng.choice(TORSION_ANGLE_VALUES, size=(2 * n))
-
-    coords = calculate_coords(n, bond_lengths, bond_angles, torsion_angles)
-
-    distances = np.sort(pdist(coords, "euclidean"))
-
-    return Instance(
-        n=coords.shape[0],
-        distances=distances,
-        input_coords=coords,
-    )
+    return Instance.from_coords(coords, freq)

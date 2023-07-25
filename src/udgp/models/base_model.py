@@ -4,7 +4,7 @@ Este módulo implementa o modelo base para instâncias do problema uDGP.
 """
 
 from collections.abc import Iterator
-from copy import copy
+from copy import deepcopy
 
 import gurobipy as gp
 import numpy as np
@@ -20,8 +20,9 @@ class BaseModel(gp.Model):
         self,
         instance: Instance,
         n: int | None = None,
-        max_gap=1e-4,
         previous_a=None,
+        max_gap=1e-2,
+        max_tol=1e-3,
         env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
@@ -30,8 +31,12 @@ class BaseModel(gp.Model):
         self.Params.MIPGap = max_gap
         self.Params.NonConvex = 2
 
-        self.instance = copy(instance)
-        self.n = n if n is not None else instance.n - 1
+        self.Params.IntFeasTol = max_tol
+        self.Params.FeasibilityTol = max_tol
+        self.Params.OptimalityTol = max_tol
+
+        self.instance = deepcopy(instance)
+        self.n = n if n is not None else instance.n - instance.fixed_n
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
@@ -74,7 +79,9 @@ class BaseModel(gp.Model):
         )
 
         # RESTRIÇÕES
-        self.addConstrs(self.a.sum("*", "*", k) <= 1 for k in self.k_values())
+        self.addConstrs(
+            self.a.sum("*", "*", k) <= self.instance.freq[k] for k in self.k_values()
+        )
         self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.ij_values())
         self.addConstrs(
             self.v[i, j] == self.x[i] - self.x[j] for i, j in self.ij_values()
@@ -84,6 +91,7 @@ class BaseModel(gp.Model):
             for i, j in self.ij_values()
         )
         self.addConstr(self.x[:fixed_num] == self.fixed_coords)
+
         # CORE
         if previous_a is not None:
             for a_ijk in previous_a:
@@ -141,10 +149,8 @@ class BaseModel(gp.Model):
         if self.SolCount == 0:
             return
 
-        idx = [
-            False if any(self.a[i, j, k].X == 1 for i, j in self.ij_values()) else True
-            for k in self.k_values()
-        ]
-        self.instance.distances = self.instance.distances[idx]
-        self.instance.m = np.count_nonzero(idx)
+        for i, j, k in self.a_ijk_values():
+            self.instance.freq[k] -= 1
+        self.instance.remove_zero_freq()
+
         self.instance.add_coords(self.x.X)
