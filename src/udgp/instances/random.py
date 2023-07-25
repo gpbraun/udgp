@@ -12,12 +12,13 @@ BOND_ANGLE_VALUES = np.array([np.arccos(-1 / 3)])
 TORSION_ANGLE_VALUES = np.array([np.pi / 3, np.pi, 5 * np.pi / 3])
 
 
-def b_matrix(i: int, seed: int = None) -> np.ndarray:
+def b_matrix(i: int, rng=None) -> np.ndarray:
     """Retorna: matriz B de índice i."""
     if i == 0:
         return np.identity(4)
 
-    rng = np.random.default_rng(seed)
+    if rng is None:
+        rng = np.random.default_rng()
     r = rng.choice(BOND_LENGTH_VALUES)
 
     if i == 1:
@@ -70,13 +71,15 @@ def b_matrix(i: int, seed: int = None) -> np.ndarray:
 
 def random_coords(n: int, seed: int = None) -> np.ndarray:
     """Retorna: matriz de coordenadas criada aletatóriamente."""
+    rng = np.random.default_rng(seed)
+
     coords = np.empty((n, 3), dtype=np.float16)
 
-    b = b_matrix(0, seed)
+    b = b_matrix(0, rng)
     col = np.array([0, 0, 0, 1]).T
 
     for i in range(n):
-        np.matmul(b, b_matrix(i, seed), out=b)
+        np.matmul(b, b_matrix(i, rng), out=b)
         coords[i] = (b @ col)[0:3].round(3)
 
     return coords

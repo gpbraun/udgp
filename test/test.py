@@ -8,4 +8,4 @@ env = gp.Env()
 
 instance = Instance.random(5, freq=True)
 model = M4(instance, env=env, max_gap=1e-2)
-# model.optimize(log=True)
+model.optimize(log=True)
