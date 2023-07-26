@@ -3,8 +3,6 @@
 Este módulo implementa a classe base para instâncias do problema uDGP.
 """
 
-from copy import deepcopy
-
 import networkx as nx
 import numpy as np
 import py3Dmol
@@ -77,14 +75,14 @@ class Instance:
         coords: np.ndarray | None = None,
     ):
         if freq is None:
-            freq = np.ones_like(dist)
+            freq = np.ones_like(dist, dtype=np.int64)
 
         self.n = n
         self.dist = dist
         self.freq = freq
-        self.coords = START_COORDS
+        self.coords = START_COORDS.copy()
         self.input_dist = dist
-        self.input_freq = deepcopy(freq)
+        self.input_freq = freq
         self.input_coords = coords
 
     @property
@@ -123,16 +121,12 @@ class Instance:
 
         Referência: LIGA
         """
-        print("olá")
         solution_all_dist = coords_to_dist(self.coords)
 
         if solution_all_dist.shape != self.input_all_dist.shape:
-            print(solution_all_dist)
-            print(self.input_all_dist)
             return False
 
-        var = np.var(solution_all_dist - self.input_all_dist) < threshold
-        print(var)
+        var = np.var(solution_all_dist - self.input_all_dist)
 
         return var < threshold
 
@@ -143,65 +137,52 @@ class Instance:
 
         return coords_are_isomorphic(self.coords, self.input_coords)
 
-    def reset(self) -> None:
-        """Reseta a instância para o estado inicial."""
-        self.dist = self.input_dist
-        print(f"{self.dist} -> {self.input_dist}")
-        self.freq = self.input_freq
-        print(f"{self.freq} -> {self.input_freq}")
-        self.coords = START_COORDS
-
-    def add_coords(self, new_coords) -> None:
-        coords = np.concatenate([self.coords, new_coords])
-        self.coords = np.unique(coords.round(3), axis=0)
-
-    # def add_random_core(self, n=5):
-    #     # while True:
-    #     core_coords = random_coords(n)
-    #     core_dist = pdist(core_coords, "euclidean").round(3)
-
-    #     for core_distance in core_dist:
-    #         for k in range(self.m):
-    #             if abs(core_distance - self.dist[k]) < 1e-2:
-    #                 self.freq[k] -= 1
-    #                 break
-
     def get_random_coords(self, n=4) -> np.ndarray:
-        """Retorna: n coordenadas já fixadas aletóriamente."""
+        """Retorna: n coordenadas já fixadas escolhidas aleatoriamente."""
         if n >= self.coords.shape[0]:
             return self.coords
 
         sample_coords = split_coords(self.coords, n)[1]
         return sample_coords
 
-    def use_distances(self, indexes):
-        for k in indexes:
-            self.freq[k] -= 1
+    def reset(self) -> None:
+        """Reseta a instância para o estado inicial."""
+        self.dist = self.input_dist.copy()
+        self.freq = self.input_freq.copy()
+        self.coords = START_COORDS.copy()
 
+    def reset_random_core(self, n=5):
+        """Reseta a instância com um core aleatório de n átomos."""
+        core_found = False
+
+        while not core_found:
+            self.reset()
+            core_found = True
+            core_coords = random_coords(n)
+            core_all_dist = coords_to_dist(core_coords)
+
+            for core_dist in core_all_dist:
+                dist_found = False
+
+                for k in range(self.m):
+                    if abs(core_dist - self.dist[k]) < 0.1:
+                        self.freq[k] -= 1
+                        dist_found = True
+                        break
+
+                if not dist_found:
+                    core_found = False
+
+        self.coords = core_coords
+        self.remove_zero_freq()
+
+    def append_coords(self, new_coords) -> None:
+        coords = np.concatenate([self.coords, new_coords])
+        self.coords = np.unique(coords.round(3), axis=0)
+
+    def remove_zero_freq(self):
         self.dist = self.dist[self.freq != 0]
         self.freq = self.freq[self.freq != 0]
-
-    # def mock_core(self, n_core=5):
-    #     """Transforma a instância em um núcleo para testes de heurísticas."""
-    #     if self.input_coords is None:
-    #         return
-
-    #     remaining_coords, self.coords = split_coords(self.input_coords, n_core)
-
-    #     if remaining_coords.shape[0] == 0:
-    #         distances = np.array([])
-    #     elif remaining_coords.shape[0] == 1:
-    #         distances = cdist(remaining_coords, self.coords, "euclidean").flatten()
-    #     else:
-    #         distances = np.concatenate(
-    #             [
-    #                 pdist(remaining_coords, "euclidean"),
-    #                 cdist(remaining_coords, self.coords, "euclidean").flatten(),
-    #             ]
-    #         )
-
-    #     self.distances = np.sort(distances)
-    #     self.m = self.distances.shape[0]
 
     @classmethod
     def from_coords(cls, coords, freq=True):

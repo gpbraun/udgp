@@ -148,5 +148,8 @@ class BaseModel(gp.Model):
         if self.SolCount == 0:
             return
 
-        self.instance.use_distances([k for i, j, k in self.a_ijk_values()])
-        self.instance.add_coords(self.x.X)
+        for _, _, k in self.a_ijk_values():
+            self.instance.freq[k] -= 1
+        self.instance.remove_zero_freq()
+
+        self.instance.append_coords(self.x.X)
