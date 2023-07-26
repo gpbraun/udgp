@@ -23,7 +23,7 @@ def split_coords(coords: np.ndarray, split_size: int):
 
 def coords_to_dist(coords: np.ndarray):
     """Retorna: lista ordenada de distâncias entre os vértices."""
-    return np.sort(pdist(coords, "euclidean").round(2).astype(np.float16))
+    return np.sort(pdist(coords, "euclidean").round(3).astype(np.float16))
 
 
 def coords_to_adjacency_matrix(coords: np.ndarray) -> csr_matrix:

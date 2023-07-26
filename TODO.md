@@ -1,56 +1,10 @@
 # TO-DO
 
-## Implementações
+## Problemas
 
-### Modelos
-
-- [x] Modelo base
-- [x] M1
-- [x] M4
-
-### Modelos relaxados
-
-- [x] M2
-- [x] M5
-
-### Heurísticas
-
-- [x] Modelo base para heurísticas
-- [ ] M3
-- [ ] M6
-
-## Análises
-
-### MIPGap e a qualidade e tempo da otimização
-
-- [ ] M1
-- [ ] M4
-
-### Modelos (instâncias de 5 átomos)
-
-#### Tempo de solução
-
-- [ ] M1
-- [ ] M2
-- [ ] M4
-- [ ] M5
-
-### Heurísticas
-
-#### Tempo para encontrar um núcleo em função do número de átomos total
-
-- [ ] M3
-- [ ] M6
-
-#### Tempo para encontrar a solução partindo de um núcleo
-
-- [ ] M3
-- [ ] M6
-
-#### Tempo total de solução
-
-- [ ] M3
-- [ ] M6
+- [ ] Impedir que a heurística fique caindo no mesmo ponto errado indefinidamente.
+- [ ] O problema real da solução atual é que cada núcleo é testado uma única vez e depois fica bloqueado. Se um dos pontos no meio do caminho fica errado então a solução é resetada e esse núcleo é perdido.
+- [ ] Vetor que representa a função custo (variância) de cada coordenada.
 
 ## Figuras
 
