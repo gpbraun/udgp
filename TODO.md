@@ -12,5 +12,3 @@
 - [ ] Conversão da estrutura na matriz de adjacência e em um grafo.
 - [ ] Histograma com as distâncias de uma estrutura com vários átomos.
 
-
-
