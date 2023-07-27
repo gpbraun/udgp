@@ -13,7 +13,9 @@ from udgp.instances.instance import Instance
 
 
 class BaseModel(gp.Model):
-    """Modelo base para o uDGP."""
+    """
+    Modelo base para o uDGP.
+    """
 
     def __init__(
         self,
@@ -39,7 +41,7 @@ class BaseModel(gp.Model):
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
-        self.fixed_coords = self.instance.get_random_coords(n=10)
+        self.fixed_coords = self.instance.get_random_coords(n=4)
         self.fixed_n = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
@@ -107,12 +109,16 @@ class BaseModel(gp.Model):
             return super(gp.Model, self).__setattr__(*args)
 
     def k_values(self) -> Iterator[int]:
-        """Retorna: índices k."""
+        """
+        Retorna: índices k.
+        """
         for k in np.arange(self.m):
             yield k
 
     def ij_values(self) -> Iterator[int]:
-        """Retorna: índices i, j."""
+        """
+        Retorna: índices i, j.
+        """
         n_fixed = self.fixed_coords.shape[0]
         # fixado, interno
         for i in np.arange(n_fixed):
@@ -124,19 +130,25 @@ class BaseModel(gp.Model):
                 yield i, j
 
     def ijk_values(self) -> Iterator[int]:
-        """Retorna: índices i, j, k."""
+        """
+        Retorna: índices i, j, k.
+        """
         for i, j in self.ij_values():
             for k in self.k_values():
                 yield i, j, k
 
     def a_ijk_values(self) -> Iterator[int]:
-        """Retorna: índices i, j, k dos valores de a selecionados."""
+        """
+        Retorna: índices i, j, k dos valores de a selecionados.
+        """
         for i, j, k in self.ijk_values():
             if self.a[i, j, k].X == 1:
                 yield i, j, k
 
     def optimize(self, log=False):
-        """Otimiza o modelo e atualiza a instância."""
+        """
+        Otimiza o modelo e atualiza a instância.
+        """
         self.Params.LogToConsole = log
 
         super(BaseModel, self).optimize()
