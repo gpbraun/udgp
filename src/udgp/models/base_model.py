@@ -40,7 +40,7 @@ class BaseModel(gp.Model):
 
         ## ÁTOMOS FIXADOS
         self.fixed_coords = self.instance.get_random_coords(n=10)
-        fixed_num = self.fixed_coords.shape[0]
+        self.fixed_n = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -51,7 +51,7 @@ class BaseModel(gp.Model):
         )
         ## Coordenadas do átomo i
         self.x = self.addMVar(
-            (self.n + fixed_num, 3),
+            (self.n + self.fixed_n, 3),
             name="x",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
@@ -89,7 +89,7 @@ class BaseModel(gp.Model):
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
             for i, j in self.ij_values()
         )
-        self.addConstr(self.x[:fixed_num] == self.fixed_coords)
+        self.addConstr(self.x[: self.fixed_n] == self.fixed_coords)
 
         # CORE
         if previous_a is not None:
@@ -152,4 +152,4 @@ class BaseModel(gp.Model):
             self.instance.freq[k] -= 1
         self.instance.remove_zero_freq()
 
-        self.instance.append_coords(self.x.X)
+        self.instance.append_coords(self.x[self.fixed_n :].X)

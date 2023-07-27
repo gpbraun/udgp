@@ -1,6 +1,6 @@
 """Gabriel Braun, 2023
 
-Este módulo implementa funções para geração de instâncias aleatórias do uDGP.
+Este módulo implementa funções para geração de instâncias de moléculas artificiais para o uDGP.
 
 Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
 """
@@ -69,7 +69,7 @@ def b_matrix(i: int, rng=None) -> np.ndarray:
     )
 
 
-def random_coords(n: int, seed: int = None) -> np.ndarray:
+def artificial_molecule_coords(n: int, seed: int = None) -> np.ndarray:
     """Retorna: matriz de coordenadas criada aletatóriamente."""
     rng = np.random.default_rng(seed)
 

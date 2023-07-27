@@ -11,7 +11,7 @@ from scipy.spatial.distance import cdist, pdist
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import radius_neighbors_graph
 
-from .random import random_coords
+from .artificial_molecule import artificial_molecule_coords
 
 START_COORDS = np.array([[0.0, 0.0, 0.0]])
 
@@ -21,9 +21,16 @@ def split_coords(coords: np.ndarray, split_size: int):
     return train_test_split(coords, test_size=split_size)
 
 
-def coords_to_dist(coords: np.ndarray):
+def coords_to_dist(coords: np.ndarray) -> np.ndarray:
     """Retorna: lista ordenada de distâncias entre os vértices."""
-    return np.sort(pdist(coords, "euclidean").round(3).astype(np.float16))
+    all_dist = pdist(coords, "euclidean")
+    return np.sort(all_dist.round(3).astype(np.float16))
+
+
+def coords_pair_to_dist(coords_1: np.ndarray, coords_2: np.ndarray) -> np.ndarray:
+    """Retorna: lista ordenada de distâncias entre os vértices."""
+    all_dist = cdist(coords_1, coords_2, "euclidean").flatten()
+    return np.sort(all_dist.round(3).astype(np.float16))
 
 
 def coords_to_adjacency_matrix(coords: np.ndarray) -> csr_matrix:
@@ -158,7 +165,7 @@ class Instance:
         while not core_found:
             self.reset()
             core_found = True
-            core_coords = random_coords(n)
+            core_coords = artificial_molecule_coords(n)
             core_all_dist = coords_to_dist(core_coords)
 
             for core_dist in core_all_dist:
@@ -177,10 +184,12 @@ class Instance:
         self.remove_zero_freq()
 
     def append_coords(self, new_coords) -> None:
-        coords = np.concatenate([self.coords, new_coords])
-        self.coords = np.unique(coords.round(3), axis=0)
+        coords = np.concatenate([self.coords, new_coords.round(3)])
+        new_all_dist = coords_pair_to_dist(self.coords, new_coords)
+        self.coords = coords
 
     def remove_zero_freq(self):
+        """Remove as distâncias cuja frequência é 0."""
         self.dist = self.dist[self.freq != 0]
         self.freq = self.freq[self.freq != 0]
 
@@ -200,5 +209,5 @@ class Instance:
     @classmethod
     def random(cls, n: int, seed: int = None, freq=True):
         """Retorna: instância aleatória com n átomos."""
-        coords = random_coords(n, seed)
+        coords = artificial_molecule_coords(n, seed)
         return cls.from_coords(coords, freq)
