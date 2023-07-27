@@ -13,7 +13,11 @@ TORSION_ANGLE_VALUES = np.array([np.pi / 3, np.pi, 5 * np.pi / 3])
 
 
 def b_matrix(i: int, rng=None) -> np.ndarray:
-    """Retorna: matriz B de índice i."""
+    """
+    Retorna: matriz B de índice i.
+
+    Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
+    """
     if i == 0:
         return np.identity(4)
 
@@ -70,7 +74,11 @@ def b_matrix(i: int, rng=None) -> np.ndarray:
 
 
 def artificial_molecule_coords(n: int, seed: int = None) -> np.ndarray:
-    """Retorna: matriz de coordenadas criada aletatóriamente."""
+    """
+    Retorna: matriz de coordenadas de uma molécula gerada artificialmente.
+
+    Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
+    """
     rng = np.random.default_rng(seed)
 
     coords = np.empty((n, 3), dtype=np.float16)

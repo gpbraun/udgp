@@ -21,7 +21,8 @@ class BaseModel(gp.Model):
         self,
         instance: Instance,
         n: int | None = None,
-        previous_a=None,
+        previous_a: list = None,
+        fixed_n: int = 4,
         max_gap=1e-2,
         max_tol=1e-3,
         env=None,
@@ -41,7 +42,7 @@ class BaseModel(gp.Model):
         self.m = self.instance.m
 
         ## ÁTOMOS FIXADOS
-        self.fixed_coords = self.instance.get_random_coords(n=4)
+        self.fixed_coords = self.instance.get_random_coords(fixed_n)
         self.fixed_n = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
@@ -160,8 +161,5 @@ class BaseModel(gp.Model):
         if self.SolCount == 0:
             return
 
-        for _, _, k in self.a_ijk_values():
-            self.instance.freq[k] -= 1
-        self.instance.remove_zero_freq()
-
-        self.instance.append_coords(self.x[self.fixed_n :].X)
+        if not self.instance.add_coords(self.x[self.fixed_n :].X):
+            self.Status = GRB.INFEASIBLE
