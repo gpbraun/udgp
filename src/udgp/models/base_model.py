@@ -22,7 +22,7 @@ class BaseModel(gp.Model):
         instance: Instance,
         n: int | None = None,
         previous_a: list = None,
-        fixed_n: int = 4,
+        fixed_n: int | None = None,
         max_gap=1e-2,
         max_tol=1e-3,
         env=None,
@@ -38,12 +38,17 @@ class BaseModel(gp.Model):
         self.Params.OptimalityTol = max_tol
 
         self.instance = instance
-        self.n = n if n is not None else instance.n - instance.fixed_n
         self.m = self.instance.m
+        if n is None or n > instance.n - instance.fixed_n:
+            n = instance.n - instance.fixed_n
+        self.n = n
 
         ## ÁTOMOS FIXADOS
+        if fixed_n is None or fixed_n > instance.fixed_n:
+            fixed_n = instance.fixed_n
+
+        self.fixed_n = fixed_n
         self.fixed_coords = self.instance.get_random_coords(fixed_n)
-        self.fixed_n = self.fixed_coords.shape[0]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -76,7 +81,7 @@ class BaseModel(gp.Model):
             self.ij_values(),
             name="r",
             vtype=GRB.CONTINUOUS,
-            lb=0,
+            lb=0.5,
             ub=GRB.INFINITY,
         )
 
@@ -162,4 +167,4 @@ class BaseModel(gp.Model):
             return
 
         if not self.instance.add_coords(self.x[self.fixed_n :].X):
-            self.Status = GRB.INFEASIBLE
+            self.Status = GRB.INTERRUPTED

@@ -79,7 +79,7 @@ class Instance:
 
         return coords_view(self.input_coords)
 
-    def is_solved(self, threshold=1e-3) -> bool:
+    def is_solved(self, threshold=1e-2) -> bool:
         """
         Retorna: verdadeiro se as distâncias do input são as mesmas da da solução.
 
