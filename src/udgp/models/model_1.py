@@ -16,21 +16,21 @@ class M1(BaseModel):
 
         # VARIÁVEIS
         self.s = self.addVars(
-            self.ijk_values(),
+            self.ijk_index(),
             name="s",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
             ub=GRB.INFINITY,
         )
         self.t = self.addVars(
-            self.ijk_values(),
+            self.ijk_index(),
             name="t",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
             ub=GRB.INFINITY,
         )
         self.u = self.addVars(
-            self.ijk_values(),
+            self.ijk_index(),
             name="u",
             vtype=GRB.CONTINUOUS,
             lb=-GRB.INFINITY,
@@ -41,15 +41,15 @@ class M1(BaseModel):
         distances = self.instance.dist
         self.addConstrs(
             self.s[i, j, k] == self.r[i, j] * self.r[i, j] - distances[k] ** 2
-            for i, j, k in self.ijk_values()
+            for i, j, k in self.ijk_index()
         )
         self.addConstrs(
             self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k]
-            for i, j, k in self.ijk_values()
+            for i, j, k in self.ijk_index()
         )
         self.addConstrs(
             self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k]
-            for i, j, k in self.ijk_values()
+            for i, j, k in self.ijk_index()
         )
 
         # OBJETIVO
