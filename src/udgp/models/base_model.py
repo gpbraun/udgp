@@ -38,7 +38,7 @@ class BaseModel(gp.Model):
         self.Params.OptimalityTol = max_tol
 
         self.instance = instance
-        self.m = self.instance.m
+        self.m = instance.m
         if n is None or n > instance.n - instance.fixed_n:
             n = instance.n - instance.fixed_n
         self.n = n
@@ -47,8 +47,10 @@ class BaseModel(gp.Model):
         if fixed_n is None or fixed_n > instance.fixed_n:
             fixed_n = instance.fixed_n
 
+        rng = np.random.default_rng()
+        self.fixed_index = rng.choice(instance.fixed_n, fixed_n, replace=False)
         self.fixed_n = fixed_n
-        self.fixed_coords = self.instance.get_random_coords(fixed_n)
+        self.fixed_coords = self.instance.coords[self.fixed_index]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -125,14 +127,14 @@ class BaseModel(gp.Model):
         """
         Retorna: índices i, j.
         """
-        n_fixed = self.fixed_coords.shape[0]
+        fixed_n = self.instance.fixed_n
         # fixado, interno
-        for i in np.arange(n_fixed):
-            for j in np.arange(n_fixed, n_fixed + self.n):
+        for i in self.fixed_index:
+            for j in np.arange(fixed_n, fixed_n + self.n):
                 yield i, j
         # interno, interno
-        for i in np.arange(n_fixed, self.n + n_fixed - 1):
-            for j in np.arange(n_fixed + i, n_fixed + self.n):
+        for i in np.arange(fixed_n, self.n + fixed_n - 1):
+            for j in np.arange(fixed_n + i, fixed_n + self.n):
                 yield i, j
 
     def ijk_values(self) -> Iterator[int]:

@@ -94,16 +94,6 @@ class Instance:
 
         return var < threshold
 
-    def get_random_coords(self, n: int) -> np.ndarray:
-        """
-        Retorna: n coordenadas da solução (fixadas) escolhidas aleatoriamente.
-        """
-        if n >= self.coords.shape[0]:
-            return self.coords
-
-        sample_coords = coords_split(self.coords, n)[1]
-        return sample_coords
-
     def reset(self):
         """
         Reseta a instância para o estado inicial.
