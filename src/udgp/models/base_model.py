@@ -46,11 +46,13 @@ class BaseModel(gp.Model):
         ## ÁTOMOS FIXADOS
         if fixed_n is None or fixed_n > instance.fixed_n:
             fixed_n = instance.fixed_n
+        self.fixed_n = fixed_n
 
         rng = np.random.default_rng()
         self.fixed_index = rng.choice(instance.fixed_n, fixed_n, replace=False)
-        self.fixed_n = fixed_n
-        self.fixed_coords = self.instance.coords[self.fixed_index]
+
+        ## ÁTOMOS NOVOS
+        self.new_index = np.arange(self.instance.fixed_n, n + self.instance.fixed_n)
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -60,13 +62,16 @@ class BaseModel(gp.Model):
             vtype=GRB.BINARY,
         )
         ## Coordenadas do átomo i
-        self.x = self.addMVar(
-            (self.n + self.fixed_n, 3),
-            name="x",
-            vtype=GRB.CONTINUOUS,
-            lb=-GRB.INFINITY,
-            ub=GRB.INFINITY,
-        )
+        self.x = {
+            i: self.addMVar(
+                3,
+                name=f"x[{i}]",
+                vtype=GRB.CONTINUOUS,
+                lb=-GRB.INFINITY,
+                ub=GRB.INFINITY,
+            )
+            for i in self.i_values()
+        }
         ## Vetor distância entre os átomos i e j
         self.v = {
             ij: self.addMVar(
@@ -93,15 +98,18 @@ class BaseModel(gp.Model):
         )
         self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.ij_values())
         self.addConstrs(
-            self.v[i, j] == self.x[i] - self.x[j] for i, j in self.ij_values()
+            self.v[i, j] == self.x[i] - self.x[j]
+            if j in self.fixed_index
+            else self.x[i] - self.x[j]
+            for i, j in self.ij_values()
         )
         self.addConstrs(
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
             for i, j in self.ij_values()
         )
-        self.addConstr(self.x[: self.fixed_n] == self.fixed_coords)
+        self.addConstrs(self.x[i] == self.instance.coords[i] for i in self.fixed_index)
 
-        # CORE
+        # ÍNDICES PROIBIDOS
         if previous_a is not None:
             for a_ijk in previous_a:
                 self.addConstr(
@@ -121,7 +129,20 @@ class BaseModel(gp.Model):
         Retorna: índices k.
         """
         for k in np.arange(self.m):
-            yield k
+            if self.instance.freq[k] > 0:
+                yield k
+
+    def i_values(self) -> Iterator[int]:
+        """
+        Retorna: índices i.
+        """
+        fixed_n = self.instance.fixed_n
+        # fixado
+        for i in self.fixed_index:
+            yield i
+        # interno
+        for i in np.arange(fixed_n, self.n + fixed_n):
+            yield i
 
     def ij_values(self) -> Iterator[int]:
         """
@@ -158,7 +179,6 @@ class BaseModel(gp.Model):
         Otimiza o modelo e atualiza a instância.
         """
         self.Params.LogToConsole = log
-
         super(BaseModel, self).optimize()
 
         if self.Status == GRB.INFEASIBLE:
@@ -168,5 +188,9 @@ class BaseModel(gp.Model):
         if self.SolCount == 0:
             return
 
-        if not self.instance.add_coords(self.x[self.fixed_n :].X):
+        print(self.new_index)
+        new_coords = np.array([self.x[i].X for i in self.new_index])
+        print(new_coords)
+        print(self.x)
+        if not self.instance.add_coords(new_coords):
             self.Status = GRB.INTERRUPTED

@@ -32,6 +32,7 @@ class Instance:
         self.dist = dist
         self.freq = freq
         self.coords = START_COORDS.copy()
+        self.a_ijk = []
         self.input_dist = dist
         self.input_freq = freq
         self.input_coords = coords
@@ -101,13 +102,7 @@ class Instance:
         self.dist = self.input_dist.copy()
         self.freq = self.input_freq.copy()
         self.coords = START_COORDS.copy()
-
-    def remove_zero_freq(self):
-        """
-        Remove as distâncias cuja frequência é 0.
-        """
-        self.dist = self.dist[self.freq != 0]
-        self.freq = self.freq[self.freq != 0]
+        self.a_ijk = []
 
     def remove_distances(self, new_repeat_dist: np.ndarray) -> bool:
         """
@@ -133,7 +128,6 @@ class Instance:
                 return False
 
         self.freq = new_freq
-        self.remove_zero_freq()
         return True
 
     def add_coords(self, new_coords: np.ndarray) -> bool:
@@ -171,7 +165,6 @@ class Instance:
             core_found = self.remove_distances(core_repeat_dist)
 
         self.coords = core_coords
-        self.remove_zero_freq()
 
     @classmethod
     def from_coords(cls, coords, freq=True):
