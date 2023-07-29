@@ -33,7 +33,7 @@ class M4(BaseModel):
         )
         ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
         self.z = self.addVars(
-            self.ijk_index(),
+            self.ijk_indices(),
             name="z",
             vtype=GRB.CONTINUOUS,
             lb=0,
@@ -41,31 +41,31 @@ class M4(BaseModel):
         )
 
         # RESTRIÇÕES
-        distances = self.instance.dist
+        distances = self.instance.dists
         D = distances.max()
-        self.addConstrs(self.w[k] >= self.p[k] for k in self.k_index())
-        self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_index())
+        self.addConstrs(self.w[k] >= self.p[k] for k in self.k_indices())
+        self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_indices())
         self.addConstrs(
             -(1 - self.a[i, j, k]) * D + self.r[i, j] <= self.z[i, j, k]
-            for i, j, k in self.ijk_index()
+            for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
             self.z[i, j, k] <= (1 - self.a[i, j, k]) * D + self.r[i, j]
-            for i, j, k in self.ijk_index()
+            for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
-            self.z[i, j, k] >= -self.a[i, j, k] * D for i, j, k in self.ijk_index()
+            self.z[i, j, k] >= -self.a[i, j, k] * D for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
-            self.z[i, j, k] <= self.a[i, j, k] * D for i, j, k in self.ijk_index()
+            self.z[i, j, k] <= self.a[i, j, k] * D for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
             self.z[i, j, k] >= -(1 - self.a[i, j, k]) * D + (distances[k] + self.p[k])
-            for i, j, k in self.ijk_index()
+            for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
             self.z[i, j, k] <= (1 - self.a[i, j, k]) * D + (distances[k] + self.p[k])
-            for i, j, k in self.ijk_index()
+            for i, j, k in self.ijk_indices()
         )
 
         # OBJETIVO

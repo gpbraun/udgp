@@ -1,11 +1,32 @@
-import gurobipy as gp
-import numpy as np
-from gurobipy import GRB
+from scipy.spatial.distance import pdist
 
-from udgp import M2, M4, Instance
+from udgp.utils import *
 
-env = gp.Env()
+coords = np.array(
+    [
+        [0, 0, 0],
+        [2.59062023, 1.83071398, -1.38368758],
+        [1.05427059, -0.46222232, -2.16192724],
+        [0.08932665, 0.43132202, -1.43352154],
+        [-0.05961127, 1.45765715, -0.34965398],
+    ]
+)
 
-instance = Instance.artificial_molecule(5, freq=True)
-model = M4(instance, env=env, max_gap=1e-2)
-# model.optimize(log=True)
+y = np.array(
+    [
+        [0, 0, 0],
+    ]
+)
+
+x = np.array(
+    [
+        [0.08932665, 0.43132202, -1.43352154],
+        [-0.05961127, 1.45765715, -0.34965398],
+        [2.59062023, 1.83071398, -1.38368758],
+        [1.05427059, -0.46222232, -2.16192724],
+    ]
+)
+
+print(np.sort(pdist(coords)).round(2))
+
+print(coords_new_dists(x, y))

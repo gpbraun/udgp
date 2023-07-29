@@ -7,41 +7,67 @@ import networkx as nx
 import numpy as np
 import py3Dmol
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import cdist, pdist
+from scipy.spatial.distance import pdist, squareform
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import radius_neighbors_graph
 
 
-def coords_dist(coords: np.ndarray) -> np.ndarray:
+def coords_dists(coords: np.ndarray, return_indices=False):
     """
-    Retorna: lista ordenada de distâncias entre os vértices.
+    Parâmetros:
+        - coords (numpy.ndarray): matriz de coordenadas.
+        - return_indices (bool): retorna os índices referentes às distâncias.
+
+    Retorna:
+        - lista completa ordenada de distâncias entre os vértices.
+        - lista de índices referentes às distâncias ordenadas.
     """
-    if coords.shape[0] < 1:
-        return np.array([], dtype=np.float16)
+    coords = np.atleast_2d(coords)
+    distances = squareform(pdist(coords, metric="euclidean"))
 
-    repeat_dist = pdist(coords, "euclidean")
-    return np.sort(repeat_dist.round(2).astype(np.float16))
+    i, j = np.triu_indices(coords.shape[0], k=1)
+
+    sorted_args = np.argsort(distances[i, j])
+    sorted_dists = distances[i, j][sorted_args].round(2).astype(np.float16)
+
+    if return_indices:
+        sorted_indices = np.c_[i[sorted_args], j[sorted_args]].astype(np.int16)
+
+        return sorted_dists, sorted_indices
+
+    return sorted_dists
 
 
-def coords_pair_dist(coords_1: np.ndarray, coords_2: np.ndarray) -> np.ndarray:
+def coords_new_dists(x_coords: np.ndarray, y_coords: np.ndarray, return_indices=False):
     """
-    Retorna: lista ordenada de distâncias entre os vértices.
+    Parâmetros:
+        - y_coords (numpy.ndarray): matriz de coordenadas fixadas.
+        - x_coords (numpy.ndarray): matriz de novas coordenadas.
+        - return_indices (bool): retorna os índices referentes às distâncias.
+
+    Retorna:
+        - lista completa ordenada de distâncias entre os vértices.
+        - lista de índices referentes às distâncias ordenadas.
     """
-    if coords_1.shape[0] == 0 or coords_2.shape[0] == 0:
-        return np.array([], dtype=np.float16)
+    x_coords = np.atleast_2d(x_coords)
+    y_coords = np.atleast_2d(y_coords)
+    coords = np.r_[y_coords, x_coords]
+    dists = squareform(pdist(coords, metric="euclidean"))
 
-    repeat_dist = cdist(coords_1, coords_2, "euclidean").flatten()
-    return np.sort(repeat_dist.round(2).astype(np.float16))
+    n_x, n_y, n = x_coords.shape[0], y_coords.shape[0], coords.shape[0]
 
+    grid = np.mgrid[0:n, n_y:n].reshape(2, -1)
+    i, j = grid[:, grid[0] < grid[1]]
 
-def coords_new_dist(coords_fixed: np.ndarray, coords_new: np.ndarray) -> np.ndarray:
-    """
-    Retorna: lista ordenada de distâncias entre os vértices.
-    """
-    fixed_new = coords_pair_dist(coords_fixed, coords_new)
-    new_new = coords_dist(coords_new)
+    sorted_args = np.argsort(dists[i, j])
+    sorted_dists = dists[i, j][sorted_args].round(2).astype(np.float16)
 
-    return np.sort(np.concatenate((fixed_new, new_new), dtype=np.float16))
+    if return_indices:
+        sorted_indices = np.c_[i[sorted_args], j[sorted_args]].astype(np.int16)
+
+        return sorted_dists, sorted_indices
+
+    return sorted_dists
 
 
 def coords_split(coords: np.ndarray, split_size: int):
@@ -51,7 +77,7 @@ def coords_split(coords: np.ndarray, split_size: int):
     return train_test_split(coords, test_size=split_size)
 
 
-def coords_xyz_str(coords: np.ndarray, title="uDGP instance") -> str:
+def coords_xyz_str(coords: np.ndarray, title="uDGP instance"):
     """
     Retorna: string com a representação da instância no formato xyz.
     """
@@ -59,7 +85,7 @@ def coords_xyz_str(coords: np.ndarray, title="uDGP instance") -> str:
     return "\n".join([str(coords.shape[0]), title, *xyz_coords])
 
 
-def coords_view(coords: np.ndarray, bg_color="#000000", alpha=0.2) -> py3Dmol.view:
+def coords_view(coords: np.ndarray, bg_color="#000000", alpha=0.2):
     """
     Retorna: visualização da instância com py3Dmol.
     """

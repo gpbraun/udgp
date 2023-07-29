@@ -12,14 +12,14 @@ BOND_ANGLE_VALUES = np.array([np.arccos(-1 / 3)])
 TORSION_ANGLE_VALUES = np.array([np.pi / 3, np.pi, 5 * np.pi / 3])
 
 
-def b_matrix(i: int, rng=None) -> np.ndarray:
+def b_matrix(i: int, rng=None):
     """
     Retorna: matriz B de índice i.
 
     Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
     """
     if i == 0:
-        return np.identity(4)
+        return np.identity(4, dtype=np.float16)
 
     if rng is None:
         rng = np.random.default_rng()
@@ -32,7 +32,8 @@ def b_matrix(i: int, rng=None) -> np.ndarray:
                 [0, 1, 0, 0],
                 [0, 0, -1, 0],
                 [0, 0, 0, 1],
-            ]
+            ],
+            dtype=np.float16,
         )
 
     theta = rng.choice(BOND_ANGLE_VALUES)
@@ -46,7 +47,8 @@ def b_matrix(i: int, rng=None) -> np.ndarray:
                 [sin_theta, -cos_theta, 0, r * sin_theta],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1],
-            ]
+            ],
+            dtype=np.float16,
         )
 
     omega = rng.choice(TORSION_ANGLE_VALUES)
@@ -69,11 +71,12 @@ def b_matrix(i: int, rng=None) -> np.ndarray:
                 r * sin_theta * sin_omega,
             ],
             [0, 0, 0, 1],
-        ]
+        ],
+        dtype=np.float16,
     )
 
 
-def artificial_molecule_coords(n: int, seed: int = None) -> np.ndarray:
+def artificial_molecule_coords(n: int, seed: int = None):
     """
     Retorna: matriz de coordenadas de uma molécula gerada artificialmente.
 
