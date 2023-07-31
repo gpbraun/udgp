@@ -7,7 +7,8 @@ import numpy as np
 
 from udgp.utils import *
 
-from .artificial_molecule import artificial_molecule_coords
+from .artificial_molecule import artificial_molecule_points
+from .lj_cluster import lj_cluster_points
 
 
 class Instance:
@@ -20,7 +21,7 @@ class Instance:
         n: int,
         dists: np.ndarray,
         freqs: np.ndarray | None = None,
-        coords: np.ndarray | None = None,
+        points: np.ndarray | None = None,
     ):
         if freqs is None:
             freqs = np.ones_like(dists, dtype=np.int64)
@@ -29,13 +30,13 @@ class Instance:
 
         self.dists = dists
         self.freqs = freqs
-        self.coords = np.zeros((1, 3), dtype=np.float16)
+        self.points = np.zeros((1, 3), dtype=np.float16)
 
         self.a_indices = np.empty((0, 3), dtype=np.int16)
 
         self.input_dists = dists
         self.input_freqs = freqs
-        self.input_coords = coords
+        self.input_points = points
 
     @property
     def m(self):
@@ -49,7 +50,7 @@ class Instance:
         """
         Retorna: número de átomos da solução atual (fixados).
         """
-        return self.coords.shape[0]
+        return self.points.shape[0]
 
     @property
     def repeat_dists(self):
@@ -69,16 +70,16 @@ class Instance:
         """
         Retorna: visualização da solução com py3Dmol.
         """
-        return coords_view(self.coords)
+        return points_view(self.points)
 
     def view_input(self):
         """
         Retorna: visualização da instância com py3Dmol.
         """
-        if self.input_coords is None:
+        if self.input_points is None:
             return
 
-        return coords_view(self.input_coords)
+        return points_view(self.input_points)
 
     def is_solved(self, threshold=1e-3):
         """
@@ -86,7 +87,7 @@ class Instance:
 
         Referência: LIGA
         """
-        solution_repeat_dists = coords_dists(self.coords)
+        solution_repeat_dists = points_dists(self.points)
 
         if solution_repeat_dists.shape != self.input_repeat_dists.shape:
             return False
@@ -101,10 +102,10 @@ class Instance:
         """
         self.dists = self.input_dists.copy()
         self.freqs = self.input_freqs.copy()
-        self.coords = np.zeros((1, 3), dtype=np.float16)
+        self.points = np.zeros((1, 3), dtype=np.float16)
         self.a_indices = np.empty((0, 3), dtype=np.int16)
 
-    def remove_coords_dists(self, dists: np.ndarray, indices: np.ndarray):
+    def remove_dists(self, dists: np.ndarray, indices: np.ndarray):
         """
         Remove uma lista distâncias com repetições da lista de distsâncias remanescentes.
 
@@ -120,10 +121,10 @@ class Instance:
             if dist == 0:
                 return False
 
-            errors = np.abs(1 - self.dists / dist)
+            errors = np.ma.array(np.abs(1 - self.dists / dist), mask=new_freqs == 0)
             k = errors.argmin()
 
-            if errors[k] < 0.2 and new_freqs[k] > 0:
+            if errors[k] < 0.2:
                 new_freqs[k] -= 1
                 self.a_indices = np.vstack((self.a_indices, [i, j, k]))
             else:
@@ -135,23 +136,20 @@ class Instance:
         self.freqs = new_freqs
         return True
 
-    def add_coords(self, new_coords: np.ndarray) -> bool:
+    def add_points(self, new_points: np.ndarray):
         """
-        Adiciona (fixa) novas coordenadas à solução.
+        Adiciona (fixa) novas pointenadas à solução.
 
-        Retorna: verdadeiro se as distsâncias entre as novas coordenadas e as coordenadas já fixadas estavam na lista de distsâncias remanescentes.
+        Retorna: verdadeiro se as distsâncias entre as novas pointenadas e as pointenadas já fixadas estavam na lista de distsâncias remanescentes.
         """
-        new_dists, new_indices = coords_new_dists(
-            new_coords, self.coords, return_indices=True
+        new_dists, new_indices = points_new_dists(
+            new_points, self.points, return_indices=True
         )
-        print(f"novas distâncias: {new_dists}")
-        print(f"distâncias disponíveis: {self.input_repeat_dists}")
 
-        if self.remove_coords_dists(new_dists, new_indices):
-            self.coords = np.r_[self.coords, new_coords.round(3)]
+        if self.remove_dists(new_dists, new_indices):
+            self.points = np.r_[self.points, new_points.round(3)]
             return True
 
-        print(f"coordenadas:\n{new_coords}\nnão puderam ser adicionadas.")
         return False
 
     def reset_with_core(self, core_type: str, n=5):
@@ -164,27 +162,27 @@ class Instance:
             self.reset()
 
             if core_type == "mock":
-                core_coords = coords_split(self.input_coords, n)[1]
+                core_points = points_split(self.input_points, n)[1]
             if core_type == "artificial":
-                core_coords = artificial_molecule_coords(n)
+                core_points = artificial_molecule_points(n)
 
-            core_dists, core_indices = coords_dists(core_coords, return_indices=True)
-            core_found = self.remove_coords_dists(core_dists, core_indices)
+            core_dists, core_indices = points_dists(core_points, return_indices=True)
+            core_found = self.remove_dists(core_dists, core_indices)
 
-        self.coords = core_coords
+        self.points = core_points
 
     @classmethod
-    def from_coords(cls, coords, freq=True):
+    def from_points(cls, points, freq=True):
         """
-        Retorna: instância referente às coordenadas fornecidas.
+        Retorna: instância referente às pointenadas fornecidas.
         """
-        dists = coords_dists(coords)
+        dists = points_dists(points)
         freqs = None
 
         if freq:
             dists, freqs = np.unique(dists, return_counts=True)
 
-        return cls(coords.shape[0], dists, freqs, coords)
+        return cls(points.shape[0], dists, freqs, points)
 
     @classmethod
     def artificial_molecule(cls, n: int, seed: int = None, freq=True):
@@ -193,5 +191,15 @@ class Instance:
 
         Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
         """
-        coords = artificial_molecule_coords(n, seed)
-        return cls.from_coords(coords, freq)
+        points = artificial_molecule_points(n, seed)
+        return cls.from_points(points, freq)
+
+    @classmethod
+    def lj_cluster(cls, n, freq=True):
+        """
+        Retorna: instância de aglomerato de Lennard-Jones com n (entre 3 e 150) átomos.
+
+        Referência: https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/tables.150.html
+        """
+        points = lj_cluster_points(n)
+        return cls.from_points(points, freq)

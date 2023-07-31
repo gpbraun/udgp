@@ -1,32 +1,6 @@
 from scipy.spatial.distance import pdist
 
+from udgp.instances.lj_cluster import lj_cluster_points
 from udgp.utils import *
 
-coords = np.array(
-    [
-        [0, 0, 0],
-        [2.59062023, 1.83071398, -1.38368758],
-        [1.05427059, -0.46222232, -2.16192724],
-        [0.08932665, 0.43132202, -1.43352154],
-        [-0.05961127, 1.45765715, -0.34965398],
-    ]
-)
-
-y = np.array(
-    [
-        [0, 0, 0],
-    ]
-)
-
-x = np.array(
-    [
-        [0.08932665, 0.43132202, -1.43352154],
-        [-0.05961127, 1.45765715, -0.34965398],
-        [2.59062023, 1.83071398, -1.38368758],
-        [1.05427059, -0.46222232, -2.16192724],
-    ]
-)
-
-print(np.sort(pdist(coords)).round(2))
-
-print(coords_new_dists(x, y))
+lj_cluster_points(3)

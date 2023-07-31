@@ -8,7 +8,7 @@
 
 ## Features
 
-- [ ] Calcular o erro associado a cada átomo. Deve ter um novo parâmetro erro na instância, que é calculado no add_coords.
+- [ ] Calcular o erro associado a cada átomo. Deve ter um novo parâmetro erro na instância, que é calculado no add_points.
 
 ## Figuras
 

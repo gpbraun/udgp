@@ -76,7 +76,7 @@ def b_matrix(i: int, rng=None):
     )
 
 
-def artificial_molecule_coords(n: int, seed: int = None):
+def artificial_molecule_points(n: int, seed: int = None):
     """
     Retorna: matriz de coordenadas de uma molécula gerada artificialmente.
 
@@ -84,13 +84,13 @@ def artificial_molecule_coords(n: int, seed: int = None):
     """
     rng = np.random.default_rng(seed)
 
-    coords = np.empty((n, 3), dtype=np.float16)
+    points = np.empty((n, 3), dtype=np.float16)
 
     b = b_matrix(0, rng)
     col = np.array([0, 0, 0, 1]).T
 
     for i in range(n):
         np.matmul(b, b_matrix(i, rng), out=b)
-        coords[i] = (b @ col)[0:3].round(3)
+        points[i] = (b @ col)[0:3].round(3)
 
-    return coords
+    return points

@@ -1,1 +1,1 @@
-from .coords import *
+from .points import *

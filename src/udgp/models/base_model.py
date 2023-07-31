@@ -30,8 +30,9 @@ class BaseModel(gp.Model):
         super(BaseModel, self).__init__("uDGP", env)
 
         self.Params.LogToConsole = False
-        self.Params.MIPGap = max_gap
         self.Params.NonConvex = 2
+        # self.Params.SolutionLimit = 1
+        self.Params.MIPGap = max_gap
 
         self.Params.IntFeasTol = max_tol
         self.Params.FeasibilityTol = max_tol
@@ -54,7 +55,7 @@ class BaseModel(gp.Model):
 
         rng = np.random.default_rng()
         self.y_indices = rng.choice(instance.fixed_n, ny, replace=False)
-        self.y = instance.coords[self.y_indices]
+        self.y = instance.points[self.y_indices]
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -63,7 +64,7 @@ class BaseModel(gp.Model):
             name="a",
             vtype=GRB.BINARY,
         )
-        ## Coordenadas do átomo i
+        ## pointenadas do átomo i
         self.x = {
             i: self.addMVar(
                 3,
@@ -74,7 +75,7 @@ class BaseModel(gp.Model):
             )
             for i in self.x_indices
         }
-        self.y = {i: instance.coords[i] for i in self.y_indices}
+        self.y = {i: instance.points[i] for i in self.y_indices}
         ## Vetor distância entre os átomos i e j
         self.v = {
             ij: self.addMVar(
@@ -116,9 +117,12 @@ class BaseModel(gp.Model):
         # ÍNDICES PROIBIDOS
         if previous_a is not None:
             for a_ijk in previous_a:
-                self.addConstr(
-                    gp.quicksum(self.a[ijk] for ijk in a_ijk) <= len(a_ijk) - 1
-                )
+                try:
+                    self.addConstr(
+                        gp.quicksum(self.a[ijk] for ijk in a_ijk) <= len(a_ijk) - 1
+                    )
+                except:
+                    pass
 
         self.update()
 
@@ -182,17 +186,21 @@ class BaseModel(gp.Model):
     def optimize(self, log=False):
         """
         Otimiza o modelo e atualiza a instância.
+
+        Retorna: verdadeiro se uma solução foi encontrada
         """
         self.Params.LogToConsole = log
         super(BaseModel, self).optimize()
 
         if self.Status == GRB.INFEASIBLE:
             print("Modelo inviável.")
-            return
+            return False
 
         if self.SolCount == 0:
-            return
+            return False
 
-        new_coords = np.array([self.x[i].X for i in self.x_indices])
-        if not self.instance.add_coords(new_coords):
-            self.Status = GRB.INTERRUPTED
+        new_points = np.array([self.x[i].X for i in self.x_indices])
+        if not self.instance.add_points(new_points):
+            return False
+        else:
+            return True
