@@ -138,9 +138,9 @@ class Instance:
 
     def add_points(self, new_points: np.ndarray):
         """
-        Adiciona (fixa) novas pointenadas à solução.
+        Adiciona (fixa) novas coordenadas à solução.
 
-        Retorna: verdadeiro se as distsâncias entre as novas pointenadas e as pointenadas já fixadas estavam na lista de distsâncias remanescentes.
+        Retorna (bool): verdadeiro se as distâncias entre os novos pontos e os pontos já fixados estavam na lista de distâncias remanescentes.
         """
         new_dists, new_indices = points_new_dists(
             new_points, self.points, return_indices=True
@@ -163,7 +163,7 @@ class Instance:
 
             if core_type == "mock":
                 core_points = points_split(self.input_points, n)[1]
-            if core_type == "artificial":
+            elif core_type == "artificial":
                 core_points = artificial_molecule_points(n)
 
             core_dists, core_indices = points_dists(core_points, return_indices=True)
@@ -174,7 +174,7 @@ class Instance:
     @classmethod
     def from_points(cls, points, freq=True):
         """
-        Retorna: instância referente às pointenadas fornecidas.
+        Retorna: instância referente às coordenadas fornecidas.
         """
         dists = points_dists(points)
         freqs = None
@@ -192,14 +192,16 @@ class Instance:
         Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
         """
         points = artificial_molecule_points(n, seed)
+
         return cls.from_points(points, freq)
 
     @classmethod
     def lj_cluster(cls, n, freq=True):
         """
-        Retorna: instância de aglomerato de Lennard-Jones com n (entre 3 e 150) átomos.
+        Retorna: instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
 
         Referência: https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/tables.150.html
         """
         points = lj_cluster_points(n)
+
         return cls.from_points(points, freq)

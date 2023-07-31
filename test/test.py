@@ -1,6 +1,3 @@
-from scipy.spatial.distance import pdist
+import gurobipy as gp
 
-from udgp.instances.lj_cluster import lj_cluster_points
-from udgp.utils import *
-
-lj_cluster_points(3)
+env = gp.Env()

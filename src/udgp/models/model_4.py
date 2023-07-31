@@ -3,6 +3,7 @@
 Este módulo implementa o modelo M4 para instâncias do problema uDGP.
 """
 
+import gurobipy as gp
 from gurobipy import GRB
 
 from .base_model import BaseModel
@@ -35,36 +36,40 @@ class M4(BaseModel):
         self.z = self.addVars(
             self.ijk_indices(),
             name="z",
-            vtype=GRB.CONTINUOUS,
-            lb=0,
-            ub=GRB.INFINITY,
+            vtype=GRB.SEMICONT,
+            lb=0.5,
+            ub=self.d_max,
         )
 
         # RESTRIÇÕES
         distances = self.instance.dists
-        D = distances.max()
+        # self.addConstr(self.d_max == gp.max_(self.z))
         self.addConstrs(self.w[k] >= self.p[k] for k in self.k_indices())
         self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_indices())
         self.addConstrs(
-            -(1 - self.a[i, j, k]) * D + self.r[i, j] <= self.z[i, j, k]
+            -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j] <= self.z[i, j, k]
             for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
-            self.z[i, j, k] <= (1 - self.a[i, j, k]) * D + self.r[i, j]
+            self.z[i, j, k] <= (1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
             for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
-            self.z[i, j, k] >= -self.a[i, j, k] * D for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k] <= self.a[i, j, k] * D for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * D + (distances[k] + self.p[k])
+            self.z[i, j, k] >= -self.a[i, j, k] * self.d_max
             for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
-            self.z[i, j, k] <= (1 - self.a[i, j, k]) * D + (distances[k] + self.p[k])
+            self.z[i, j, k] <= self.a[i, j, k] * self.d_max
+            for i, j, k in self.ijk_indices()
+        )
+        self.addConstrs(
+            self.z[i, j, k]
+            >= -(1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[k])
+            for i, j, k in self.ijk_indices()
+        )
+        self.addConstrs(
+            self.z[i, j, k]
+            <= (1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[k])
             for i, j, k in self.ijk_indices()
         )
 

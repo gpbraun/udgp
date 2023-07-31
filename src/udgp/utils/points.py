@@ -15,7 +15,7 @@ from sklearn.neighbors import radius_neighbors_graph
 def points_dists(points: np.ndarray, return_indices=False):
     """
     Parâmetros:
-        - points (numpy.ndarray): matriz de pointenadas.
+        - points (numpy.ndarray): matriz de coordenadas.
         - return_indices (bool): retorna os índices referentes às distâncias.
 
     Retorna:
@@ -43,8 +43,8 @@ def points_new_dists(
 ):
     """
     Parâmetros:
-        - y_points (numpy.ndarray): matriz de pointenadas fixadas.
-        - x_points (numpy.ndarray): matriz de novas pointenadas.
+        - y_points (numpy.ndarray): matriz de coordenadas fixadas.
+        - x_points (numpy.ndarray): matriz de novas coordenadas.
         - return_indices (bool): retorna os índices referentes às distâncias.
 
     Retorna:
@@ -74,7 +74,7 @@ def points_new_dists(
 
 def points_split(points: np.ndarray, split_size: int):
     """
-    Retorna: pointenadas divididas.
+    Retorna: coordenadas divididas.
     """
     return train_test_split(points, test_size=split_size)
 
@@ -118,7 +118,7 @@ def points_view(points: np.ndarray, bg_color="#000000", alpha=0.2):
 
 # def points_are_isomorphic(points_1, points_2) -> bool:
 #     """
-#     Retorna: verdadeiro se as pointenadas representam a mesma molécula.
+#     Retorna: verdadeiro se as coordenadas representam a mesma molécula.
 #     """
 #     graph_1 = points_graph(points_1)
 #     graph_2 = points_graph(points_2)

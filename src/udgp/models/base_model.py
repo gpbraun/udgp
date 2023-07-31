@@ -22,43 +22,48 @@ class BaseModel(gp.Model):
         instance: Instance,
         nx: int | None = None,
         ny: int | None = None,
-        previous_a: list | None = None,
-        max_dist: float | None = None,
         max_gap=1e-2,
         max_tol=1e-3,
-        core=False,
         env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
 
+        # PARÂMETROS DO SOLVER (GUROBI)
         self.Params.LogToConsole = False
         self.Params.NonConvex = 2
-        # self.Params.SolutionLimit = 1
         self.Params.MIPGap = max_gap
 
         self.Params.IntFeasTol = max_tol
         self.Params.FeasibilityTol = max_tol
         self.Params.OptimalityTol = max_tol
 
+        # PARÂMETROS DA INSTÂNCIA
         self.instance = instance
         self.m = instance.m
-        self.max_dist = max_dist
 
-        ## ÁTOMOS NOVOS (x)
+        # ÍNDICES
+        # pontos novos (x)
         if nx is None or nx > instance.n - instance.fixed_n:
             nx = instance.n - instance.fixed_n
         self.x_n = nx
 
         self.x_indices = np.arange(self.instance.fixed_n, nx + self.instance.fixed_n)
 
-        ## ÁTOMOS FIXADOS (y)
+        # pontos fixados (y)
         if ny is None or ny > instance.fixed_n:
             ny = instance.fixed_n
         self.y_n = ny
 
         rng = np.random.default_rng()
         self.y_indices = rng.choice(instance.fixed_n, ny, replace=False)
+
         self.y = instance.points[self.y_indices]
+
+        # PARÂMETROS
+        ## coordenadas dos pontos fixados
+        self.y = {i: instance.points[i] for i in self.y_indices}
+        ## maior distância
+        self.d_max = self.instance.dists[list(self.k_indices())].max()
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -67,7 +72,7 @@ class BaseModel(gp.Model):
             name="a",
             vtype=GRB.BINARY,
         )
-        ## pointenadas do átomo i
+        ## coordenadas do ponto i
         self.x = {
             i: self.addMVar(
                 3,
@@ -78,7 +83,6 @@ class BaseModel(gp.Model):
             )
             for i in self.x_indices
         }
-        self.y = {i: instance.points[i] for i in self.y_indices}
         ## Vetor distância entre os átomos i e j
         self.v = {
             ij: self.addMVar(
@@ -96,7 +100,7 @@ class BaseModel(gp.Model):
             name="r",
             vtype=GRB.CONTINUOUS,
             lb=0.5,
-            ub=GRB.INFINITY,
+            ub=self.d_max,
         )
 
         # RESTRIÇÕES
@@ -117,19 +121,6 @@ class BaseModel(gp.Model):
             for i, j in self.ij_indices()
         )
 
-        if core:
-            self.addConstr(self.a.sum("*", "*", 0) >= min(self.instance.freqs[0], 4))
-
-        # ÍNDICES PROIBIDOS
-        if previous_a is not None:
-            for a_ijk in previous_a:
-                try:
-                    self.addConstr(
-                        gp.quicksum(self.a[ijk] for ijk in a_ijk) <= len(a_ijk) - 1
-                    )
-                except:
-                    pass
-
         self.update()
 
     def __setattr__(self, *args):
@@ -143,7 +134,7 @@ class BaseModel(gp.Model):
         Retorna: índices k.
         """
         for k in np.arange(self.m):
-            if self.instance.freqs[k] > 0 and self.instance.dists[k] < self.max_dist:
+            if self.instance.freqs[k] > 0:
                 yield k
 
     def i_indices(self):

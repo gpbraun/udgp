@@ -38,7 +38,7 @@ class M1(BaseModel):
         )
 
         # RESTRIÇÕES
-        distances = self.instance.dist
+        distances = self.instance.dists
         self.addConstrs(
             self.s[i, j, k] == self.r[i, j] * self.r[i, j] - distances[k] ** 2
             for i, j, k in self.ijk_indices()
