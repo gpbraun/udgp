@@ -23,8 +23,10 @@ class BaseModel(gp.Model):
         nx: int | None = None,
         ny: int | None = None,
         previous_a: list | None = None,
+        max_dist: float | None = None,
         max_gap=1e-2,
         max_tol=1e-3,
+        core=False,
         env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
@@ -40,6 +42,7 @@ class BaseModel(gp.Model):
 
         self.instance = instance
         self.m = instance.m
+        self.max_dist = max_dist
 
         ## ÁTOMOS NOVOS (x)
         if nx is None or nx > instance.n - instance.fixed_n:
@@ -114,6 +117,9 @@ class BaseModel(gp.Model):
             for i, j in self.ij_indices()
         )
 
+        if core:
+            self.addConstr(self.a.sum("*", "*", 0) >= min(self.instance.freqs[0], 4))
+
         # ÍNDICES PROIBIDOS
         if previous_a is not None:
             for a_ijk in previous_a:
@@ -137,7 +143,7 @@ class BaseModel(gp.Model):
         Retorna: índices k.
         """
         for k in np.arange(self.m):
-            if self.instance.freqs[k] > 0:
+            if self.instance.freqs[k] > 0 and self.instance.dists[k] < self.max_dist:
                 yield k
 
     def i_indices(self):
