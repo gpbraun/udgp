@@ -18,19 +18,19 @@ class M4(BaseModel):
         # VARIÁVEIS
         ## Erro no cálculo da distância
         self.p = self.addVars(
-            self.m,
+            self.ijk_indices(),
             name="p",
             vtype=GRB.CONTINUOUS,
-            lb=-self.Params.MIPGap,
-            ub=self.Params.MIPGap,
+            lb=-self.max_gap,
+            ub=self.max_gap,
         )
         ## Valor absoluto no erro do cálculo da distância
         self.w = self.addVars(
-            self.m,
+            self.ijk_indices(),
             name="w",
             vtype=GRB.CONTINUOUS,
             lb=0,
-            ub=self.Params.MIPGap,
+            ub=self.max_gap,
         )
         ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
         self.z = self.addVars(
@@ -43,8 +43,12 @@ class M4(BaseModel):
 
         # RESTRIÇÕES
         distances = self.instance.dists
-        self.addConstrs(self.w[k] >= self.p[k] for k in self.k_indices())
-        self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_indices())
+        self.addConstrs(
+            self.w[i, j, k] >= self.p[i, j, k] for i, j, k in self.ijk_indices()
+        )
+        self.addConstrs(
+            self.w[i, j, k] >= -self.p[i, j, k] for i, j, k in self.ijk_indices()
+        )
         self.addConstrs(
             -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j] <= self.z[i, j, k]
             for i, j, k in self.ijk_indices()
@@ -63,25 +67,27 @@ class M4(BaseModel):
         )
         self.addConstrs(
             self.z[i, j, k]
-            >= -(1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[k])
+            >= -(1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[i, j, k])
             for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
             self.z[i, j, k]
-            <= (1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[k])
+            <= (1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[i, j, k])
             for i, j, k in self.ijk_indices()
         )
 
         # OBJETIVO
         if self.relaxed:
             self.setObjective(
-                self.w.sum()
+                1
+                + self.w.sum()
                 - gp.quicksum(
-                    self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.ijk_indices()
+                    self.a[i, j, k] * self.a[i, j, k] - 1
+                    for i, j, k in self.ijk_indices()
                 ),
                 GRB.MINIMIZE,
             )
         else:
-            self.setObjective(self.w.sum(), GRB.MINIMIZE)
+            self.setObjective(1 + self.w.sum(), GRB.MINIMIZE)
 
         self.update()

@@ -22,25 +22,27 @@ class BaseModel(gp.Model):
         instance: Instance,
         nx: int | None = None,
         ny: int | None = None,
-        max_gap=1e-2,
-        max_tol=1e-3,
+        max_gap=5e-3,
+        max_tol=1e-4,
         relaxed=False,
         env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
 
+        # PARÂMETROS DA INSTÂNCIA
+        self.instance = instance
+        self.m = instance.m
+
         # PARÂMETROS DO SOLVER (GUROBI)
         self.Params.LogToConsole = False
         self.Params.NonConvex = 2
-        self.Params.MIPGap = max_gap
+
+        self.max_gap = max_gap
+        self.Params.MIPGap = len(list(self.k_indices())) * max_gap
 
         self.Params.IntFeasTol = max_tol
         self.Params.FeasibilityTol = max_tol
         self.Params.OptimalityTol = max_tol
-
-        # PARÂMETROS DA INSTÂNCIA
-        self.instance = instance
-        self.m = instance.m
 
         # ÍNDICES
         # pontos novos (x)
@@ -208,7 +210,7 @@ class BaseModel(gp.Model):
             return False
 
         new_points = np.array([self.x[i].X for i in self.x_indices])
-        if not self.instance.add_points(new_points):
+        if not self.instance.add_points(new_points, self.max_gap):
             return False
         else:
             return True

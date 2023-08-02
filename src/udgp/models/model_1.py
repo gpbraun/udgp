@@ -56,9 +56,11 @@ class M1(BaseModel):
         # OBJETIVO
         if self.relaxed:
             self.setObjective(
-                self.u.sum()
+                1
+                + self.u.sum()
                 - gp.quicksum(
-                    self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.ijk_indices()
+                    self.a[i, j, k] * self.a[i, j, k] - 1
+                    for i, j, k in self.ijk_indices()
                 ),
                 GRB.MINIMIZE,
             )
