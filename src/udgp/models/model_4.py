@@ -43,7 +43,6 @@ class M4(BaseModel):
 
         # RESTRIÇÕES
         distances = self.instance.dists
-        # self.addConstr(self.d_max == gp.max_(self.z))
         self.addConstrs(self.w[k] >= self.p[k] for k in self.k_indices())
         self.addConstrs(self.w[k] >= -self.p[k] for k in self.k_indices())
         self.addConstrs(
@@ -74,6 +73,15 @@ class M4(BaseModel):
         )
 
         # OBJETIVO
-        self.setObjective(self.w.sum(), GRB.MINIMIZE)
+        if self.relaxed:
+            self.setObjective(
+                self.w.sum()
+                - gp.quicksum(
+                    self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.ijk_indices()
+                ),
+                GRB.MINIMIZE,
+            )
+        else:
+            self.setObjective(self.w.sum(), GRB.MINIMIZE)
 
         self.update()

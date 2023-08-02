@@ -3,6 +3,7 @@
 Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
+import gurobipy as gp
 from gurobipy import GRB
 
 from .base_model import BaseModel
@@ -53,6 +54,15 @@ class M1(BaseModel):
         )
 
         # OBJETIVO
-        self.setObjective(self.u.sum(), GRB.MINIMIZE)
+        if self.relaxed:
+            self.setObjective(
+                self.u.sum()
+                - gp.quicksum(
+                    self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.ijk_indices()
+                ),
+                GRB.MINIMIZE,
+            )
+        else:
+            self.setObjective(self.u.sum() + 1, GRB.MINIMIZE)
 
         self.update()

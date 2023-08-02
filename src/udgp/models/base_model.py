@@ -24,6 +24,7 @@ class BaseModel(gp.Model):
         ny: int | None = None,
         max_gap=1e-2,
         max_tol=1e-3,
+        relaxed=False,
         env=None,
     ):
         super(BaseModel, self).__init__("uDGP", env)
@@ -67,11 +68,21 @@ class BaseModel(gp.Model):
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
-        self.a = self.addVars(
-            self.ijk_indices(),
-            name="a",
-            vtype=GRB.BINARY,
-        )
+        self.relaxed = relaxed
+        if self.relaxed:
+            self.a = self.addVars(
+                self.ijk_indices(),
+                name="a",
+                vtype=GRB.CONTINUOUS,
+                lb=0,
+                ub=1,
+            )
+        else:
+            self.a = self.addVars(
+                self.ijk_indices(),
+                name="a",
+                vtype=GRB.BINARY,
+            )
         ## coordenadas do ponto i
         self.x = {
             i: self.addMVar(

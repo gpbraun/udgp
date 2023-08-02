@@ -87,12 +87,18 @@ def points_xyz_str(points: np.ndarray, title="uDGP instance"):
     return "\n".join([str(points.shape[0]), title, *xyz_points])
 
 
-def points_view(points: np.ndarray, bg_color="#000000", alpha=0.2):
+def points_view(
+    points: np.ndarray,
+    bg_color="#000000",
+    alpha=0.2,
+    width=400,
+    height=350,
+):
     """
     Retorna: visualização da instância com py3Dmol.
     """
     xyz_str = points_xyz_str(points)
-    view = py3Dmol.view(data=xyz_str, width=400, height=350)
+    view = py3Dmol.view(data=xyz_str, width=width, height=height)
     view.setBackgroundColor(bg_color, alpha)
     view.setStyle(
         {

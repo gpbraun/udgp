@@ -8,7 +8,7 @@ import numpy as np
 from udgp.utils import *
 
 from .artificial_molecule import artificial_molecule_points
-from .lj_cluster import lj_cluster_points
+from .nanoparticles import c60, lj_cluster_points
 
 
 class Instance:
@@ -34,7 +34,6 @@ class Instance:
 
         self.a_indices = np.empty((0, 3), dtype=np.int16)
 
-        self.input_dists = dists
         self.input_freqs = freqs
         self.input_points = points
 
@@ -64,22 +63,22 @@ class Instance:
         """
         Retorna: lista com repetição (ordenada) de distsâncias de entrada.
         """
-        return np.repeat(self.input_dists, self.input_freqs)
+        return np.repeat(self.dists, self.input_freqs)
 
-    def view(self):
+    def view(self, *args, **kwargs):
         """
         Retorna: visualização da solução com py3Dmol.
         """
-        return points_view(self.points)
+        return points_view(self.points, *args, **kwargs)
 
-    def view_input(self):
+    def view_input(self, *args, **kwargs):
         """
         Retorna: visualização da instância com py3Dmol.
         """
         if self.input_points is None:
             return
 
-        return points_view(self.input_points)
+        return points_view(self.input_points, *args, **kwargs)
 
     def is_solved(self, threshold=1e-3):
         """
@@ -100,7 +99,7 @@ class Instance:
         """
         Reseta a instância para o estado inicial.
         """
-        self.dists = self.input_dists.copy()
+        self.dists = self.dists.copy()
         self.freqs = self.input_freqs.copy()
         self.points = np.zeros((1, 3), dtype=np.float16)
         self.a_indices = np.empty((0, 3), dtype=np.int16)
@@ -192,6 +191,17 @@ class Instance:
         Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
         """
         points = artificial_molecule_points(n, seed)
+
+        return cls.from_points(points, freq)
+
+    @classmethod
+    def c60(cls, freq=True):
+        """
+        Retorna: instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
+
+        Referência: https://webbook.nist.gov/cgi/inchi?ID=C99685968&Mask=20
+        """
+        points = c60()
 
         return cls.from_points(points, freq)
 
