@@ -38,8 +38,9 @@ class BaseModel(gp.Model):
         self.Params.NonConvex = 2
 
         self.max_gap = max_gap
-        self.Params.MIPGap = len(list(self.k_indices())) * max_gap
+        self.max_tol = max_tol
 
+        self.Params.MIPGap = len(list(self.k_indices())) * max_gap
         self.Params.IntFeasTol = max_tol
         self.Params.FeasibilityTol = max_tol
         self.Params.OptimalityTol = max_tol
@@ -210,7 +211,7 @@ class BaseModel(gp.Model):
             return False
 
         new_points = np.array([self.x[i].X for i in self.x_indices])
-        if not self.instance.add_points(new_points, self.max_gap):
+        if not self.instance.add_points(new_points, 2 * self.max_gap):
             return False
         else:
             return True

@@ -104,7 +104,7 @@ class Instance:
         self.points = np.zeros((1, 3), dtype=np.float16)
         self.a_indices = np.empty((0, 3), dtype=np.int16)
 
-    def remove_dists(self, dists: np.ndarray, indices: np.ndarray, max_gap=0.05):
+    def remove_dists(self, dists: np.ndarray, indices: np.ndarray, threshold=0.05):
         """
         Remove uma lista distâncias com repetições da lista de distsâncias remanescentes.
 
@@ -123,7 +123,7 @@ class Instance:
             errors = np.ma.array(np.abs(1 - self.dists / dist), mask=new_freqs == 0)
             k = errors.argmin()
 
-            if errors[k] < 0.05:
+            if errors[k] < threshold:
                 new_freqs[k] -= 1
                 self.a_indices = np.vstack((self.a_indices, [i, j, k]))
             else:
@@ -135,17 +135,17 @@ class Instance:
         self.freqs = new_freqs
         return True
 
-    def add_points(self, new_points: np.ndarray, max_gap=0.05):
+    def add_points(self, new_points: np.ndarray, threshold=0.05):
         """
-        Adiciona (fixa) novas coordenadas à solução.
-
-        Retorna (bool): verdadeiro se as distâncias entre os novos pontos e os pontos já fixados estavam na lista de distâncias remanescentes.
+                Adiciona (fixa) novas coordenadas à solução.
+        a
+                Retorna (bool): verdadeiro se as distâncias entre os novos pontos e os pontos já fixados estavam na lista de distâncias remanescentes.
         """
         new_dists, new_indices = points_new_dists(
             new_points, self.points, return_indices=True
         )
 
-        if self.remove_dists(new_dists, new_indices, max_gap):
+        if self.remove_dists(new_dists, new_indices, threshold):
             self.points = np.r_[self.points, new_points.round(3)]
             return True
 
