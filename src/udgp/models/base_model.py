@@ -33,18 +33,6 @@ class BaseModel(gp.Model):
         self.instance = instance
         self.m = instance.m
 
-        # PARÂMETROS DO SOLVER (GUROBI)
-        self.Params.LogToConsole = False
-        self.Params.NonConvex = 2
-
-        self.max_gap = max_gap
-        self.max_tol = max_tol
-
-        self.Params.MIPGap = len(list(self.k_indices())) * max_gap
-        self.Params.IntFeasTol = max_tol
-        self.Params.FeasibilityTol = max_tol
-        self.Params.OptimalityTol = max_tol
-
         # ÍNDICES
         # pontos novos (x)
         if nx is None or nx > instance.n - instance.fixed_n:
@@ -62,6 +50,18 @@ class BaseModel(gp.Model):
         self.y_indices = rng.choice(instance.fixed_n, ny, replace=False)
 
         self.y = instance.points[self.y_indices]
+
+        # PARÂMETROS DO SOLVER (GUROBI)
+        self.Params.LogToConsole = False
+        self.Params.NonConvex = 2
+
+        self.max_gap = max_gap
+        self.max_tol = max_tol
+
+        self.Params.MIPGap = len(list(self.ij_indices())) * max_gap
+        self.Params.IntFeasTol = max_tol
+        self.Params.FeasibilityTol = max_tol
+        self.Params.OptimalityTol = max_tol
 
         # PARÂMETROS
         ## coordenadas dos pontos fixados
