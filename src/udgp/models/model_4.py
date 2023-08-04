@@ -50,7 +50,7 @@ class M4(BaseModel):
             self.w[i, j, k] >= -self.p[i, j, k] for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
-            -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j] <= self.z[i, j, k]
+            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
             for i, j, k in self.ijk_indices()
         )
         self.addConstrs(
