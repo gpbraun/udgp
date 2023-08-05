@@ -4,12 +4,13 @@ Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
 import gurobipy as gp
-from gurobipy import GRB
+import pyomo.environ as pyo
 
+from .base_gurobipy import BaseModelGurobipy
 from .base_model import BaseModel
 
 
-class M1(BaseModel):
+class M1(BaseModelGurobipy):
     """Modelo M1 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
@@ -19,23 +20,23 @@ class M1(BaseModel):
         self.s = self.addVars(
             self.ijk_indices(),
             name="s",
-            vtype=GRB.CONTINUOUS,
-            lb=-GRB.INFINITY,
-            ub=GRB.INFINITY,
+            vtype=gp.GRB.CONTINUOUS,
+            lb=-gp.GRB.INFINITY,
+            ub=gp.GRB.INFINITY,
         )
         self.t = self.addVars(
             self.ijk_indices(),
             name="t",
-            vtype=GRB.CONTINUOUS,
-            lb=-GRB.INFINITY,
-            ub=GRB.INFINITY,
+            vtype=gp.GRB.CONTINUOUS,
+            lb=-gp.GRB.INFINITY,
+            ub=gp.GRB.INFINITY,
         )
         self.u = self.addVars(
             self.ijk_indices(),
             name="u",
-            vtype=GRB.CONTINUOUS,
-            lb=-GRB.INFINITY,
-            ub=GRB.INFINITY,
+            vtype=gp.GRB.CONTINUOUS,
+            lb=-gp.GRB.INFINITY,
+            ub=gp.GRB.INFINITY,
         )
 
         # RESTRIÇÕES
@@ -63,9 +64,9 @@ class M1(BaseModel):
                     self.a[i, j, k] * self.a[i, j, k] - 1
                     for i, j, k in self.ijk_indices()
                 ),
-                GRB.MINIMIZE,
+                gp.GRB.MINIMIZE,
             )
         else:
-            self.setObjective(self.u.sum() + 1, GRB.MINIMIZE)
+            self.setObjective(self.u.sum() + 1, gp.GRB.MINIMIZE)
 
         self.update()

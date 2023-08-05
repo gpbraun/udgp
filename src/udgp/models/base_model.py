@@ -1,20 +1,17 @@
 """Gabriel Braun, 2023
 
-Este módulo implementa o modelo base para instâncias do problema uDGP.
+Este módulo implementa o selfo base para instâncias do problema uDGP usando a API pyomo.
 """
 
-from collections.abc import Iterator
-
-import gurobipy as gp
 import numpy as np
-from gurobipy import GRB
+import pyomo.environ as pyo
 
 from udgp.instances.instance import Instance
 
 
-class BaseModel(gp.Model):
+class BaseModel(pyo.ConcreteModel):
     """
-    Modelo base para o uDGP.
+    Modelo base para o uDGP usando a API pyomo.
     """
 
     def __init__(
@@ -25,192 +22,120 @@ class BaseModel(gp.Model):
         max_gap=5e-3,
         max_tol=1e-4,
         relaxed=False,
-        env=None,
     ):
-        super(BaseModel, self).__init__("uDGP", env)
+        super(BaseModel, self).__init__()
 
         # PARÂMETROS DA INSTÂNCIA
         self.instance = instance
-        self.m = instance.m
+        self.n = pyo.Param(initialize=instance.n)
+        self.m = pyo.Param(initialize=instance.m)
 
-        # ÍNDICES
-        # pontos novos (x)
-        if nx is None or nx > instance.n - instance.fixed_n:
-            nx = instance.n - instance.fixed_n
-        self.x_n = nx
-
-        self.x_indices = np.arange(self.instance.fixed_n, nx + self.instance.fixed_n)
-
-        # pontos fixados (y)
-        if ny is None or ny > instance.fixed_n:
-            ny = instance.fixed_n
-        self.y_n = ny
-
+        # CONJUNTOS
+        ## Conjunto I
         rng = np.random.default_rng()
-        self.y_indices = rng.choice(instance.fixed_n, ny, replace=False)
+        y_indices = rng.choice(instance.fixed_n, ny, replace=False)
+        x_indices = np.arange(instance.fixed_n, nx + instance.fixed_n)
 
-        self.y = instance.points[self.y_indices]
+        self.Iy = pyo.Set(initialize=y_indices)
+        self.Ix = pyo.Set(initialize=x_indices)
+        self.I = self.Iy | self.Ix
 
-        # PARÂMETROS DO SOLVER (GUROBI)
-        self.Params.LogToConsole = False
-        self.Params.NonConvex = 2
+        ## Conjunto J
+        self.IJxx = pyo.Set(
+            within=self.Ix * self.Ix,
+            initialize=((i, j) for i in self.Ix for j in self.Ix if i < j),
+        )
+        self.IJyx = pyo.Set(initialize=self.Iy * self.Ix)
 
-        self.max_gap = max_gap
-        self.max_tol = max_tol
+        self.IJ = self.IJyx | self.IJxx
 
-        self.Params.MIPGap = len(list(self.ij_indices())) * max_gap
-        self.Params.IntFeasTol = max_tol
-        self.Params.FeasibilityTol = max_tol
-        self.Params.OptimalityTol = max_tol
+        ## Conjunto K
+        k = np.arange(instance.m)[instance.freqs != 0]
+        self.K = pyo.Set(initialize=k)
+
+        ## Conjunto L
+        self.L = pyo.Set(initialize=[0, 1, 2])
 
         # PARÂMETROS
-        ## coordenadas dos pontos fixados
-        self.y = {i: instance.points[i] for i in self.y_indices}
-        ## maior distância
-        self.d_max = self.instance.dists[list(self.k_indices())].max()
+        self.max_gap = pyo.Param(initialize=max_gap)
+        self.max_tol = pyo.Param(initialize=max_tol)
+        self.d_max = pyo.Param(initialize=instance.dists.max())
+        self.d_min = pyo.Param(initialize=instance.dists.min())
 
-        # VARIÁVEIS
-        ## Decisão: distância k é referente ao par de átomos i e j
-        self.relaxed = relaxed
-        if self.relaxed:
-            self.a = self.addVars(
-                self.ijk_indices(),
-                name="a",
-                vtype=GRB.CONTINUOUS,
-                lb=0,
-                ub=1,
+        self.dists = pyo.Param(
+            self.K,
+            within=pyo.PositiveReals,
+            initialize=instance.dists,
+        )
+        self.freqs = pyo.Param(
+            self.K,
+            within=pyo.NonNegativeIntegers,
+            initialize=instance.freqs,
+        )
+        self.y = pyo.Param(
+            self.Iy,
+            self.L,
+            within=pyo.Reals,
+            initialize={(i, l): instance.points[i, l] for i in self.Iy for l in self.L},
+        )
+
+        # VARIÁVEIS BASE
+        if relaxed:
+            self.a = pyo.Var(
+                self.IJ,
+                self.K,
+                within=pyo.UnitInterval,
             )
         else:
-            self.a = self.addVars(
-                self.ijk_indices(),
-                name="a",
-                vtype=GRB.BINARY,
+            self.a = pyo.Var(
+                self.IJ,
+                self.K,
+                within=pyo.Binary,
             )
-        ## coordenadas do ponto i
-        self.x = {
-            i: self.addMVar(
-                3,
-                name=f"x[{i}]",
-                vtype=GRB.CONTINUOUS,
-                lb=-GRB.INFINITY,
-                ub=GRB.INFINITY,
-            )
-            for i in self.x_indices
-        }
-        ## Vetor distância entre os átomos i e j
-        self.v = {
-            ij: self.addMVar(
-                3,
-                name=f"v[{ij}]",
-                vtype=GRB.CONTINUOUS,
-                lb=-GRB.INFINITY,
-                ub=GRB.INFINITY,
-            )
-            for ij in self.ij_indices()
-        }
-        ## Distância entre os átomos i e j (norma de v)
-        self.r = self.addVars(
-            self.ij_indices(),
-            name="r",
-            vtype=GRB.CONTINUOUS,
-            lb=0.5,
-            ub=self.d_max,
-        )
+        self.x = pyo.Var(self.Ix, self.L, within=pyo.Reals)
+        self.v = pyo.Var(self.IJ, self.L, within=pyo.Reals)
+        self.r = pyo.Var(self.IJ, within=pyo.Reals, bounds=(self.d_min, self.d_max))
 
-        # RESTRIÇÕES
-        self.addConstrs(
-            self.a.sum("*", "*", k) <= self.instance.freqs[k] for k in self.k_indices()
-        )
-        self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.ij_indices())
-        self.addConstrs(
-            self.v[i, j] == self.x[i] - self.x[j]
-            for i, j in self.ij_indices(xx=True, xy=False)
-        )
-        self.addConstrs(
-            self.v[i, j] == self.y[i] - self.x[j]
-            for i, j in self.ij_indices(xx=False, xy=True)
-        )
-        self.addConstrs(
-            self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j]
-            for i, j in self.ij_indices()
-        )
+        # RESTRIÇÕES BASE
+        @self.Constraint(self.K)
+        def constr_a1(self, k):
+            return sum(self.a[i, j, k] for i, j in self.IJ) <= self.freqs[k]
 
-        self.update()
+        @self.Constraint(self.IJ)
+        def constr_a2(self, i, j):
+            return sum(self.a[i, j, k] for k in self.K) == 1
 
-    def __setattr__(self, *args):
-        try:
-            return super(BaseModel, self).__setattr__(*args)
-        except AttributeError:
-            return super(gp.Model, self).__setattr__(*args)
+        @self.Constraint(self.IJxx, self.L)
+        def constr_v_xx(self, i, j, l):
+            return self.v[i, j, l] == self.x[j, l] - self.x[i, l]
 
-    def k_indices(self):
-        """
-        Retorna: índices k.
-        """
-        for k in np.arange(self.m):
-            if self.instance.freqs[k] > 0:
-                yield k
+        @self.Constraint(self.IJyx, self.L)
+        def constr_v_xy(self, i, j, l):
+            return self.v[i, j, l] == self.y[i, l] - self.x[j, l]
 
-    def i_indices(self):
-        """
-        Retorna: índices i.
-        """
-        # fixado
-        for i in self.y_indices:
-            yield i
-        # interno
-        for i in self.x_indices:
-            yield i
+        @self.Constraint(self.IJ)
+        def constr_r(self, i, j):
+            return self.r[i, j] ** 2 == sum(self.v[i, j, l] ** 2 for l in self.L)
 
-    def ij_indices(self, xx=True, xy=True):
-        """
-        Retorna: índices i, j.
-        """
-        # fixado, interno
-        if xy:
-            for i in self.y_indices:
-                for j in self.x_indices:
-                    yield i, j
-        # interno, interno
-        if xx:
-            for i in self.x_indices:
-                for j in self.x_indices:
-                    if i < j:
-                        yield i, j
-
-    def ijk_indices(self):
-        """
-        Retorna: índices i, j, k.
-        """
-        for i, j in self.ij_indices():
-            for k in self.k_indices():
-                yield i, j, k
-
-    def a_ijk_indices(self):
-        """
-        Retorna: índices i, j, k dos valores de a selecionados.
-        """
-        for i, j, k in self.ijk_indices():
-            if self.a[i, j, k].X == 1:
-                yield i, j, k
-
-    def optimize(self, log=False):
+    def optimize(self, solver="gurobi_direct", log=False):
         """
         Otimiza o modelo e atualiza a instância.
 
         Retorna: verdadeiro se uma solução foi encontrada
         """
-        self.Params.LogToConsole = log
-        super(BaseModel, self).optimize()
+        opt = pyo.SolverFactory(solver)
 
-        if self.Status == GRB.INFEASIBLE:
-            print("Modelo inviável.")
-            return False
+        if solver in ["gurobi", "gurobi_direct"]:
+            opt.options["NonConvex"] = 2
+            opt.options["MIPGap"] = self.max_gap * len(self.IJ.data())
+            opt.options["IntFeasTol"] = self.max_tol
+            opt.options["FeasibilityTol"] = self.max_tol
+            opt.options["OptimalityTol"] = self.max_tol
 
-        if self.SolCount == 0:
-            return False
+        opt.solve(self, tee=log, report_timing=log)
 
-        new_points = np.array([self.x[i].X for i in self.x_indices])
+        # ATUALIZA A INSTÂNCIA
+        new_points = np.array([[self.x[i, l].value for l in self.L] for i in self.Ix])
         if not self.instance.add_points(new_points, 2 * self.max_gap):
             return False
         else:
