@@ -7,8 +7,6 @@ Este módulo implementa o modelo base para instâncias do problema uDGP.
 import numpy as np
 import pyomo.environ as pyo
 
-from udgp.instances.instance import Instance
-
 
 class BaseModel(pyo.ConcreteModel):
     """
@@ -17,9 +15,11 @@ class BaseModel(pyo.ConcreteModel):
 
     def __init__(
         self,
-        instance: Instance,
-        nx: int | None = None,
-        ny: int | None = None,
+        x_indices: np.ndarray,
+        y_indices: np.ndarray,
+        dists: np.ndarray,
+        freqs: np.ndarray,
+        fixed_points: np.ndarray,
         max_gap=1e-2,
         max_tol=1e-4,
         relaxed=False,
@@ -27,19 +27,13 @@ class BaseModel(pyo.ConcreteModel):
         super(BaseModel, self).__init__()
 
         # PARÂMETROS DA INSTÂNCIA
-        self.instance = instance
-        self.n = pyo.Param(initialize=instance.n)
-        self.m = pyo.Param(initialize=instance.m)
+        # self.instance = instance
+        self.nx = pyo.Param(initialize=len(x_indices))
+        self.ny = pyo.Param(initialize=len(y_indices))
+        self.m = pyo.Param(initialize=len(dists))
 
         # CONJUNTOS
         ## Conjunto I
-        ny = instance.fixed_n if ny is None else ny
-        nx = instance.n - instance.fixed_n if nx is None else nx
-
-        rng = np.random.default_rng()
-        y_indices = rng.choice(instance.fixed_n, ny, replace=False)
-        x_indices = np.arange(instance.fixed_n, nx + instance.fixed_n)
-
         self.Iy = pyo.Set(initialize=y_indices)
         self.Ix = pyo.Set(initialize=x_indices)
         self.I = self.Iy | self.Ix
@@ -54,7 +48,7 @@ class BaseModel(pyo.ConcreteModel):
         self.IJ = self.IJyx | self.IJxx
 
         ## Conjunto K
-        k = np.arange(instance.m)[instance.freqs != 0]
+        k = np.arange(self.m)[freqs != 0]
         self.K = pyo.Set(initialize=k)
 
         ## Conjunto L
@@ -63,20 +57,16 @@ class BaseModel(pyo.ConcreteModel):
         # PARÂMETROS
         self.max_gap = pyo.Param(initialize=max_gap)
         self.max_tol = pyo.Param(initialize=max_tol)
-        self.d_max = pyo.Param(initialize=instance.dists[instance.freqs != 0].max())
-        self.d_min = pyo.Param(initialize=instance.dists[instance.freqs != 0].min())
+        self.d_max = pyo.Param(initialize=dists[freqs != 0].max())
+        self.d_min = pyo.Param(initialize=dists[freqs != 0].min())
 
-        self.dists = pyo.Param(
-            self.K, within=pyo.PositiveReals, initialize=instance.dists
-        )
-        self.freqs = pyo.Param(
-            self.K, within=pyo.NonNegativeIntegers, initialize=instance.freqs
-        )
+        self.dists = pyo.Param(self.K, initialize=dists, within=pyo.PositiveReals)
+        self.freqs = pyo.Param(self.K, initialize=freqs, within=pyo.NonNegativeIntegers)
         self.y = pyo.Param(
             self.Iy,
             self.L,
             within=pyo.Reals,
-            initialize={(i, l): instance.points[i, l] for i in self.Iy for l in self.L},
+            initialize={(i, l): fixed_points[i, l] for i in self.Iy for l in self.L},
         )
 
         # VARIÁVEIS BASE
@@ -121,7 +111,7 @@ class BaseModel(pyo.ConcreteModel):
         """
         Otimiza o modelo e atualiza a instância.
 
-        Retorna: verdadeiro se uma solução foi encontrada
+        Retorna (bool): verdadeiro se uma solução foi encontrada
         """
         opt = pyo.SolverFactory(solver, solver_io="python")
 
@@ -136,10 +126,3 @@ class BaseModel(pyo.ConcreteModel):
             opt.options["Cuts"] = 2
 
         opt.solve(self, tee=log, report_timing=log)
-
-        # ATUALIZA A INSTÂNCIA
-        new_points = self.solution_points()
-        if not self.instance.add_points(new_points, 2 * self.max_gap):
-            return False
-        else:
-            return True

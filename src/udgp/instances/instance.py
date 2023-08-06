@@ -5,7 +5,7 @@ Este módulo implementa a classe base para instâncias do problema uDGP.
 
 import numpy as np
 
-# from udgp.models import M1, M2
+from udgp.models import M1, M2
 from udgp.utils import *
 
 from .artificial_molecule import artificial_molecule_points
@@ -174,15 +174,73 @@ class Instance:
 
         self.points = core_points
 
-    def solve(self, model, log=False):
+    def solve(
+        self,
+        model_name,
+        nx=None,
+        ny=None,
+        log=False,
+    ):
         """
         Resolve a instância.
         """
         self.reset()
 
-        m = model(self, relaxed=False)
+        ny = self.fixed_n if ny is None else ny
+        nx = self.n - self.fixed_n if nx is None else nx
 
-        m.solve(log=log)
+        rng = np.random.default_rng()
+        y_indices = rng.choice(self.fixed_n, ny, replace=False)
+        x_indices = np.arange(self.fixed_n, nx + self.fixed_n)
+
+        if model_name == "M1":
+            model = M1(
+                x_indices,
+                y_indices,
+                self.dists,
+                self.freqs,
+                self.points,
+                relaxed=False,
+            )
+
+        elif model_name == "M1R":
+            model = M1(
+                x_indices,
+                y_indices,
+                self.dists,
+                self.freqs,
+                self.points,
+                relaxed=True,
+            )
+
+        elif model_name == "M2":
+            model = M2(
+                x_indices,
+                y_indices,
+                self.dists,
+                self.freqs,
+                self.points,
+                relaxed=False,
+            )
+
+        elif model_name == "M2R":
+            model = M2(
+                x_indices,
+                y_indices,
+                self.dists,
+                self.freqs,
+                self.points,
+                relaxed=True,
+            )
+
+        model.solve(log=log)
+
+        # ATUALIZA A INSTÂNCIA
+        new_points = model.solution_points()
+        if not self.add_points(new_points, 0.1):
+            return False
+        else:
+            return True
 
     @classmethod
     def from_points(cls, points, freq=True):
