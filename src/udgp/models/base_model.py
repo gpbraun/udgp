@@ -33,11 +33,11 @@ class BaseModel(pyo.ConcreteModel):
 
         # CONJUNTOS
         ## Conjunto I
-        rng = np.random.default_rng()
         ny = instance.fixed_n if ny is None else ny
-        y_indices = rng.choice(instance.fixed_n, ny, replace=False)
-
         nx = instance.n - instance.fixed_n if nx is None else nx
+
+        rng = np.random.default_rng()
+        y_indices = rng.choice(instance.fixed_n, ny, replace=False)
         x_indices = np.arange(instance.fixed_n, nx + instance.fixed_n)
 
         self.Iy = pyo.Set(initialize=y_indices)
@@ -67,14 +67,10 @@ class BaseModel(pyo.ConcreteModel):
         self.d_min = pyo.Param(initialize=instance.dists[instance.freqs != 0].min())
 
         self.dists = pyo.Param(
-            self.K,
-            within=pyo.PositiveReals,
-            initialize=instance.dists,
+            self.K, within=pyo.PositiveReals, initialize=instance.dists
         )
         self.freqs = pyo.Param(
-            self.K,
-            within=pyo.NonNegativeIntegers,
-            initialize=instance.freqs,
+            self.K, within=pyo.NonNegativeIntegers, initialize=instance.freqs
         )
         self.y = pyo.Param(
             self.Iy,
@@ -86,17 +82,10 @@ class BaseModel(pyo.ConcreteModel):
         # VARIÁVEIS BASE
         self.relaxed = relaxed
         if relaxed:
-            self.a = pyo.Var(
-                self.IJ,
-                self.K,
-                within=pyo.UnitInterval,
-            )
+            self.a = pyo.Var(self.IJ, self.K, within=pyo.UnitInterval)
         else:
-            self.a = pyo.Var(
-                self.IJ,
-                self.K,
-                within=pyo.Binary,
-            )
+            self.a = pyo.Var(self.IJ, self.K, within=pyo.Binary)
+
         self.x = pyo.Var(self.Ix, self.L, within=pyo.Reals)
         self.v = pyo.Var(self.IJ, self.L, within=pyo.Reals)
         self.r = pyo.Var(self.IJ, within=pyo.Reals, bounds=(self.d_min, self.d_max))
@@ -122,6 +111,12 @@ class BaseModel(pyo.ConcreteModel):
         def constr_r(self, i, j):
             return self.r[i, j] ** 2 == sum(self.v[i, j, l] ** 2 for l in self.L)
 
+    def solution_points(self):
+        """
+        Retorna (np.ndarray): pontos encontrados na solução do modelo.
+        """
+        return np.array([[self.x[i, l].value for l in self.L] for i in self.Ix])
+
     def solve(self, solver="gurobi", log=False):
         """
         Otimiza o modelo e atualiza a instância.
@@ -130,7 +125,7 @@ class BaseModel(pyo.ConcreteModel):
         """
         opt = pyo.SolverFactory(solver, solver_io="python")
 
-        mip_gap = self.max_gap * len(self.IJ.data())
+        mip_gap = self.max_gap * len(self.IJ)
 
         if "gurobi" in solver.lower():
             opt.options["NonConvex"] = 2
@@ -143,7 +138,7 @@ class BaseModel(pyo.ConcreteModel):
         opt.solve(self, tee=log, report_timing=log)
 
         # ATUALIZA A INSTÂNCIA
-        new_points = np.array([[self.x[i, l].value for l in self.L] for i in self.Ix])
+        new_points = self.solution_points()
         if not self.instance.add_points(new_points, 2 * self.max_gap):
             return False
         else:
