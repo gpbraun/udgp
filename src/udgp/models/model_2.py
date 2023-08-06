@@ -1,13 +1,11 @@
-"""Gabriel Braun, 2023
+"""
+Gabriel Braun, 2023
 
 Este módulo implementa o modelo M2 para instâncias do problema uDGP.
 """
 
-import gurobipy as gp
 import pyomo.environ as pyo
-from gurobipy import GRB
 
-from .base_gurobipy import BaseModelGurobipy
 from .base_model import BaseModel
 
 
@@ -67,15 +65,15 @@ class M2(BaseModel):
 
         @self.Constraint(self.IJ, self.K)
         def constr_x7(self, i, j, k):
-            return self.z[i, j, k] >= self.dists[k] + self.p[i, j, k] - self.d_max * (
-                1 - self.a[i, j, k]
-            )
+            return self.z[i, j, k] >= self.dists[k] * (
+                1 + self.p[i, j, k]
+            ) - self.d_max * (1 - self.a[i, j, k])
 
         @self.Constraint(self.IJ, self.K)
         def constr_x8(self, i, j, k):
-            return self.z[i, j, k] <= self.dists[k] + self.p[i, j, k] + self.d_max * (
-                1 - self.a[i, j, k]
-            )
+            return self.z[i, j, k] <= self.dists[k] * (
+                1 + self.p[i, j, k]
+            ) + self.d_max * (1 - self.a[i, j, k])
 
         # OBJETIVO
         def relaxed_objective(model):
@@ -88,87 +86,3 @@ class M2(BaseModel):
             sense=pyo.minimize,
             rule=relaxed_objective if self.relaxed else objective,
         )
-
-
-class M2Gurobipy(BaseModelGurobipy):
-    """Modelo M2 para o uDGP."""
-
-    def __init__(self, *args, **kwargs):
-        super(M2Gurobipy, self).__init__(*args, **kwargs)
-
-        # VARIÁVEIS
-        ## Erro no cálculo da distância
-        self.p = self.addVars(
-            self.ijk_indices(),
-            name="p",
-            vtype=GRB.CONTINUOUS,
-            lb=-self.max_gap,
-            ub=self.max_gap,
-        )
-        ## Valor absoluto no erro do cálculo da distância
-        self.w = self.addVars(
-            self.ijk_indices(),
-            name="w",
-            vtype=GRB.CONTINUOUS,
-            lb=0,
-            ub=self.max_gap,
-        )
-        ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
-        self.z = self.addVars(
-            self.ijk_indices(),
-            name="z",
-            vtype=GRB.SEMICONT,
-            lb=0.5,
-            ub=self.d_max,
-        )
-
-        # RESTRIÇÕES
-        distances = self.instance.dists
-        self.addConstrs(
-            self.w[i, j, k] >= self.p[i, j, k] for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.w[i, j, k] >= -self.p[i, j, k] for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k] <= (1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k] >= -self.a[i, j, k] * self.d_max
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k] <= self.a[i, j, k] * self.d_max
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k]
-            >= -(1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[i, j, k])
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.z[i, j, k]
-            <= (1 - self.a[i, j, k]) * self.d_max + (distances[k] + self.p[i, j, k])
-            for i, j, k in self.ijk_indices()
-        )
-
-        # OBJETIVO
-        if self.relaxed:
-            self.setObjective(
-                1
-                + self.w.sum()
-                + len(list(self.ij_indices()))
-                - gp.quicksum(
-                    self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.ijk_indices()
-                ),
-                GRB.MINIMIZE,
-            )
-        else:
-            self.setObjective(1 + self.w.sum(), GRB.MINIMIZE)
-
-        self.update()

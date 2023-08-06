@@ -5,6 +5,7 @@ Este módulo implementa a classe base para instâncias do problema uDGP.
 
 import numpy as np
 
+# from udgp.models import M1, M2
 from udgp.utils import *
 
 from .artificial_molecule import artificial_molecule_points
@@ -161,7 +162,10 @@ class Instance:
             self.reset()
 
             if core_type == "mock":
-                core_points = points_split(self.input_points, n)[1]
+                rng = np.random.default_rng()
+                y_indices = rng.choice(self.n, n, replace=False)
+                core_points = self.input_points[y_indices]
+
             elif core_type == "artificial":
                 core_points = artificial_molecule_points(n)
 
@@ -169,6 +173,16 @@ class Instance:
             core_found = self.remove_dists(core_dists, core_indices)
 
         self.points = core_points
+
+    def solve(self, model, log=False):
+        """
+        Resolve a instância.
+        """
+        self.reset()
+
+        m = model(self, relaxed=False)
+
+        m.solve(log=log)
 
     @classmethod
     def from_points(cls, points, freq=True):

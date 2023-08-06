@@ -3,13 +3,9 @@
 Este módulo implementa funções gerais para manipulação de instâncias do problema uDGP.
 """
 
-import networkx as nx
 import numpy as np
 import py3Dmol
-from scipy.sparse import csr_matrix
 from scipy.spatial.distance import pdist, squareform
-from sklearn.model_selection import train_test_split
-from sklearn.neighbors import radius_neighbors_graph
 
 
 def points_dists(points: np.ndarray, return_indices=False):
@@ -72,13 +68,6 @@ def points_new_dists(
     return sorted_dists
 
 
-def points_split(points: np.ndarray, split_size: int):
-    """
-    Retorna: coordenadas divididas.
-    """
-    return train_test_split(points, test_size=split_size)
-
-
 def points_xyz_str(points: np.ndarray, title="uDGP instance"):
     """
     Retorna: string com a representação da instância no formato xyz.
@@ -107,25 +96,3 @@ def points_view(
         }
     )
     return view
-
-
-# def points_adjacency_matrix(points: np.ndarray) -> csr_matrix:
-#     """
-#     Retorna: matriz de adjacência da instância.
-#     """
-#     return radius_neighbors_graph(points, 1.8, mode="connectivity")
-
-# def points_graph(points: np.ndarray) -> nx.Graph:
-#     """
-#     Retorna: representação de grafo da instância.
-#     """
-#     am = points_adjacency_matrix(points)
-#     return nx.from_scipy_sparse_array(am)
-
-# def points_are_isomorphic(points_1, points_2) -> bool:
-#     """
-#     Retorna: verdadeiro se as coordenadas representam a mesma molécula.
-#     """
-#     graph_1 = points_graph(points_1)
-#     graph_2 = points_graph(points_2)
-#     return nx.vf2pp_is_isomorphic(graph_1, graph_2, node_label=None)

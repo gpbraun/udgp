@@ -1,6 +1,7 @@
-"""Gabriel Braun, 2023
+"""
+Gabriel Braun, 2023
 
-Este módulo implementa o selfo base para instâncias do problema uDGP usando a API pyomo.
+Este módulo implementa o modelo base para instâncias do problema uDGP.
 """
 
 import numpy as np
@@ -11,7 +12,7 @@ from udgp.instances.instance import Instance
 
 class BaseModel(pyo.ConcreteModel):
     """
-    Modelo base para o uDGP usando a API pyomo.
+    Modelo base para o uDGP.
     """
 
     def __init__(
@@ -19,7 +20,7 @@ class BaseModel(pyo.ConcreteModel):
         instance: Instance,
         nx: int | None = None,
         ny: int | None = None,
-        max_gap=5e-3,
+        max_gap=1e-2,
         max_tol=1e-4,
         relaxed=False,
     ):
@@ -33,7 +34,10 @@ class BaseModel(pyo.ConcreteModel):
         # CONJUNTOS
         ## Conjunto I
         rng = np.random.default_rng()
+        ny = instance.fixed_n if ny is None else ny
         y_indices = rng.choice(instance.fixed_n, ny, replace=False)
+
+        nx = instance.n - instance.fixed_n if nx is None else nx
         x_indices = np.arange(instance.fixed_n, nx + instance.fixed_n)
 
         self.Iy = pyo.Set(initialize=y_indices)
@@ -118,38 +122,25 @@ class BaseModel(pyo.ConcreteModel):
         def constr_r(self, i, j):
             return self.r[i, j] ** 2 == sum(self.v[i, j, l] ** 2 for l in self.L)
 
-    def optimize(self, solver="gurobi_direct", log=False):
+    def solve(self, solver="gurobi", log=False):
         """
         Otimiza o modelo e atualiza a instância.
 
         Retorna: verdadeiro se uma solução foi encontrada
         """
-        opt = pyo.SolverFactory("gurobi", solver_io="python")
+        opt = pyo.SolverFactory(solver, solver_io="python")
 
         mip_gap = self.max_gap * len(self.IJ.data())
 
-        if solver in ["gurobi", "gurobi_direct"]:
+        if "gurobi" in solver.lower():
             opt.options["NonConvex"] = 2
             opt.options["MIPGapAbs"] = mip_gap
             opt.options["IntFeasTol"] = self.max_tol
             opt.options["FeasibilityTol"] = self.max_tol
             opt.options["OptimalityTol"] = self.max_tol
             opt.options["Cuts"] = 2
-        elif solver == "xpress":
-            opt.options["miprefineiterlimit"] = 1_000_000
-            opt.options["MIPREFINEITERLIMIT"] = 1_000_000
-            opt.options["miprelstop"] = mip_gap
-            opt.options["miptol"] = self.max_tol
-        elif solver == "cplex":
-            opt.options["optimalitytarget"] = 3
-            opt.options["mip tolerances absmipgap"] = mip_gap
-        elif solver == "cplex_direct":
-            opt.options["optimalitytarget"] = 3
-            opt.options["mip_tolerances_absmipgap"] = mip_gap
 
         opt.solve(self, tee=log, report_timing=log)
-
-        # print(opt.get_model_attr("Runtime"))
 
         # ATUALIZA A INSTÂNCIA
         new_points = np.array([[self.x[i, l].value for l in self.L] for i in self.Ix])

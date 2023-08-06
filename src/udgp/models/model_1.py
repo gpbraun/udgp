@@ -1,72 +1,63 @@
-"""Gabriel Braun, 2023
+"""
+Gabriel Braun, 2023
 
 Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
-import gurobipy as gp
 import pyomo.environ as pyo
 
-from .base_gurobipy import BaseModelGurobipy
 from .base_model import BaseModel
 
 
-class M1(BaseModelGurobipy):
+class M1(BaseModel):
     """Modelo M1 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
         super(M1, self).__init__(*args, **kwargs)
 
         # VARIÁVEIS
-        self.s = self.addVars(
-            self.ijk_indices(),
-            name="s",
-            vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+        self.s = pyo.Var(
+            self.IJ,
+            self.K,
+            within=pyo.Reals,
         )
-        self.t = self.addVars(
-            self.ijk_indices(),
-            name="t",
-            vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+        self.t = pyo.Var(
+            self.IJ,
+            self.K,
+            within=pyo.Reals,
         )
-        self.u = self.addVars(
-            self.ijk_indices(),
-            name="u",
-            vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+        self.u = pyo.Var(
+            self.IJ,
+            self.K,
+            within=pyo.Reals,
         )
 
         # RESTRIÇÕES
-        distances = self.instance.dists
-        self.addConstrs(
-            self.s[i, j, k] == self.r[i, j] * self.r[i, j] - distances[k] ** 2
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k]
-            for i, j, k in self.ijk_indices()
-        )
-        self.addConstrs(
-            self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k]
-            for i, j, k in self.ijk_indices()
-        )
+        @self.Constraint(self.IJ, self.K)
+        def constr_x1(self, i, j, k):
+            return self.s[i, j, k] == self.r[i, j] * self.r[i, j] - self.dists[k] ** 2
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x2(self, i, j, k):
+            return self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k]
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x3(self, i, j, k):
+            return self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k]
 
         # OBJETIVO
-        if self.relaxed:
-            self.setObjective(
+        def relaxed_objective(model):
+            return (
                 1
-                + self.u.sum()
-                + len(list(self.ij_indices()))
-                - gp.quicksum(
-                    self.a[i, j, k] * self.a[i, j, k] - 1
-                    for i, j, k in self.ijk_indices()
-                ),
-                gp.GRB.MINIMIZE,
+                + len(model.IJ)
+                + pyo.summation(model.u)
+                - sum(model.a[i, j, k] ** 2 for i, j, k in model.IJ * model.K)
             )
-        else:
-            self.setObjective(self.u.sum() + 1, gp.GRB.MINIMIZE)
 
-        self.update()
+        def objective(model):
+            return 1 + pyo.summation(model.u)
+
+        self.obj = pyo.Objective(
+            sense=pyo.minimize,
+            rule=relaxed_objective if self.relaxed else objective,
+        )
