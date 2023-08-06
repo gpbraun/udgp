@@ -78,9 +78,16 @@ class M2(BaseModel):
             )
 
         # OBJETIVO
-        @self.Objective(sense=pyo.minimize)
+        def relaxed_objective(model):
+            return 1 + pyo.summation(model.w) - pyo.summation(model.a)
+
         def objective(model):
             return 1 + pyo.summation(model.w)
+
+        self.obj = pyo.Objective(
+            sense=pyo.minimize,
+            rule=relaxed_objective if self.relaxed else objective,
+        )
 
 
 class M2Gurobipy(BaseModelGurobipy):

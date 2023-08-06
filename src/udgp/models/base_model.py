@@ -59,8 +59,8 @@ class BaseModel(pyo.ConcreteModel):
         # PARÂMETROS
         self.max_gap = pyo.Param(initialize=max_gap)
         self.max_tol = pyo.Param(initialize=max_tol)
-        self.d_max = pyo.Param(initialize=instance.dists.max())
-        self.d_min = pyo.Param(initialize=instance.dists.min())
+        self.d_max = pyo.Param(initialize=instance.dists[instance.freqs != 0].max())
+        self.d_min = pyo.Param(initialize=instance.dists[instance.freqs != 0].min())
 
         self.dists = pyo.Param(
             self.K,
@@ -80,6 +80,7 @@ class BaseModel(pyo.ConcreteModel):
         )
 
         # VARIÁVEIS BASE
+        self.relaxed = relaxed
         if relaxed:
             self.a = pyo.Var(
                 self.IJ,
@@ -123,16 +124,32 @@ class BaseModel(pyo.ConcreteModel):
 
         Retorna: verdadeiro se uma solução foi encontrada
         """
-        opt = pyo.SolverFactory(solver)
+        opt = pyo.SolverFactory("gurobi", solver_io="python")
+
+        mip_gap = self.max_gap * len(self.IJ.data())
 
         if solver in ["gurobi", "gurobi_direct"]:
             opt.options["NonConvex"] = 2
-            opt.options["MIPGap"] = self.max_gap * len(self.IJ.data())
+            opt.options["MIPGapAbs"] = mip_gap
             opt.options["IntFeasTol"] = self.max_tol
             opt.options["FeasibilityTol"] = self.max_tol
             opt.options["OptimalityTol"] = self.max_tol
+            opt.options["Cuts"] = 2
+        elif solver == "xpress":
+            opt.options["miprefineiterlimit"] = 1_000_000
+            opt.options["MIPREFINEITERLIMIT"] = 1_000_000
+            opt.options["miprelstop"] = mip_gap
+            opt.options["miptol"] = self.max_tol
+        elif solver == "cplex":
+            opt.options["optimalitytarget"] = 3
+            opt.options["mip tolerances absmipgap"] = mip_gap
+        elif solver == "cplex_direct":
+            opt.options["optimalitytarget"] = 3
+            opt.options["mip_tolerances_absmipgap"] = mip_gap
 
         opt.solve(self, tee=log, report_timing=log)
+
+        # print(opt.get_model_attr("Runtime"))
 
         # ATUALIZA A INSTÂNCIA
         new_points = np.array([[self.x[i, l].value for l in self.L] for i in self.Ix])

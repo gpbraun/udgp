@@ -60,12 +60,14 @@ class BaseModelGurobipy(gp.Model):
         self.Params.IntFeasTol = max_tol
         self.Params.FeasibilityTol = max_tol
         self.Params.OptimalityTol = max_tol
+        self.Params.Cuts = 2
 
         # PARÂMETROS
         ## coordenadas dos pontos fixados
         self.y = {i: instance.points[i] for i in self.y_indices}
         ## maior distância
         self.d_max = self.instance.dists[list(self.k_indices())].max()
+        self.d_min = self.instance.dists[list(self.k_indices())].min()
 
         # VARIÁVEIS
         ## Decisão: distância k é referente ao par de átomos i e j
@@ -111,7 +113,7 @@ class BaseModelGurobipy(gp.Model):
             self.ij_indices(),
             name="r",
             vtype=GRB.CONTINUOUS,
-            lb=0.5,
+            lb=self.d_min,
             ub=self.d_max,
         )
 
