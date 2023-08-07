@@ -103,7 +103,7 @@ class Instance:
 
         return var < threshold
 
-    def reset(self):
+    def reset(self, reset_runtime=False):
         """
         Reseta a instância para o estado inicial.
         """
@@ -111,6 +111,8 @@ class Instance:
         self.freqs = self.input_freqs.copy()
         self.points = np.zeros((1, 3), dtype=np.float16)
         self.a_indices = np.empty((0, 3), dtype=np.int16)
+        if reset_runtime:
+            self.runtime = 0.0
 
     def remove_dists(self, dists: np.ndarray, indices: np.ndarray, threshold=0.05):
         """
@@ -155,7 +157,7 @@ class Instance:
         )
 
         if self.remove_dists(new_dists, new_indices, threshold):
-            self.points = np.r_[self.points, new_points.round(3)]
+            self.points = np.r_[self.points, new_points]
             return True
 
         return False
@@ -210,8 +212,8 @@ class Instance:
         y_indices = np.sort(rng.choice(self.fixed_n, ny, replace=False))
         x_indices = np.arange(self.fixed_n, nx + self.fixed_n)
 
-        relaxed = "R" in model_name
-        gurobipy = "gp" in model_name
+        relaxed = "r" in model_name.lower()
+        gurobipy = "gp" in model_name.lower()
 
         if "M1" in model_name:
             model = M1gp if gurobipy else M1

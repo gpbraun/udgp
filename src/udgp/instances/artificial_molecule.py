@@ -7,9 +7,9 @@ Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
 
 import numpy as np
 
-BOND_LENGTH_VALUES = np.array([1.5])
-BOND_ANGLE_VALUES = np.array([np.arccos(-1 / 3)])
-TORSION_ANGLE_VALUES = np.array([np.pi / 3, np.pi, 5 * np.pi / 3])
+BOND_LENGTH_VALUES = np.array([1.5], dtype=np.float64)
+BOND_ANGLE_VALUES = np.array([np.arccos(-1 / 3)], dtype=np.float64)
+TORSION_ANGLE_VALUES = np.array([np.pi / 3, np.pi, 5 * np.pi / 3], dtype=np.float64)
 
 
 def b_matrix(i: int, rng=None):
@@ -19,7 +19,7 @@ def b_matrix(i: int, rng=None):
     Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
     """
     if i == 0:
-        return np.identity(4, dtype=np.float16)
+        return np.identity(4, dtype=np.float64)
 
     if rng is None:
         rng = np.random.default_rng()
@@ -33,7 +33,7 @@ def b_matrix(i: int, rng=None):
                 [0, 0, -1, 0],
                 [0, 0, 0, 1],
             ],
-            dtype=np.float16,
+            dtype=np.float64,
         )
 
     theta = rng.choice(BOND_ANGLE_VALUES)
@@ -48,7 +48,7 @@ def b_matrix(i: int, rng=None):
                 [0, 0, 1, 0],
                 [0, 0, 0, 1],
             ],
-            dtype=np.float16,
+            dtype=np.float64,
         )
 
     omega = rng.choice(TORSION_ANGLE_VALUES)
@@ -72,7 +72,7 @@ def b_matrix(i: int, rng=None):
             ],
             [0, 0, 0, 1],
         ],
-        dtype=np.float16,
+        dtype=np.float64,
     )
 
 
@@ -84,7 +84,7 @@ def artificial_molecule_points(n: int, seed: int = None):
     """
     rng = np.random.default_rng(seed)
 
-    points = np.empty((n, 3), dtype=np.float16)
+    points = np.empty((n, 3), dtype=np.float64)
 
     b = b_matrix(0, rng)
     col = np.array([0, 0, 0, 1]).T

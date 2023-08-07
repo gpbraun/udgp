@@ -20,8 +20,8 @@ class BaseModel(pyo.ConcreteModel):
         dists: np.ndarray,
         freqs: np.ndarray,
         fixed_points: np.ndarray,
-        max_gap=5.0e-3,
-        max_tol=1.0e-4,
+        max_gap=1.0e-4,
+        max_tol=1.0e-6,
         relaxed=False,
         previous_a: list | None = None,
     ):
@@ -61,8 +61,9 @@ class BaseModel(pyo.ConcreteModel):
         # PARÂMETROS
         self.max_gap = max_gap
         self.max_tol = max_tol
-        self.d_max = pyo.Param(initialize=dists[freqs != 0].max())
-        self.d_min = pyo.Param(initialize=dists[freqs != 0].min())
+        self.max_err = self.max_gap + self.max_tol
+        self.d_min = pyo.Param(initialize=dists[freqs != 0].min() - self.max_err)
+        self.d_max = pyo.Param(initialize=dists[freqs != 0].max() + self.max_err)
 
         self.dists = pyo.Param(
             self.K,
@@ -139,7 +140,7 @@ class BaseModel(pyo.ConcreteModel):
         opt = pyo.SolverFactory(solver, solver_io="python")
 
         # PARÂMETROS DO SOLVER
-        mip_gap = self.max_gap * len(self.IJ)
+        mip_gap = self.max_gap
         ## Gurobi
         if "gurobi" in solver.lower():
             opt.options["NonConvex"] = 2

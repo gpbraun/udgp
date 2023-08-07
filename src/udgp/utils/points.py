@@ -24,10 +24,10 @@ def points_dists(points: np.ndarray, return_indices=False):
     i, j = np.triu_indices(points.shape[0], k=1)
 
     sorted_args = np.argsort(distances[i, j])
-    sorted_dists = distances[i, j][sorted_args].round(2).astype(np.float16)
+    sorted_dists = distances[i, j][sorted_args].round(4).astype(np.float64)
 
     if return_indices:
-        sorted_indices = np.c_[i[sorted_args], j[sorted_args]].astype(np.int16)
+        sorted_indices = np.c_[i[sorted_args], j[sorted_args]].astype(np.int64)
 
         return sorted_dists, sorted_indices
 
@@ -58,7 +58,7 @@ def points_new_dists(
     i, j = grid[:, grid[0] < grid[1]]
 
     sorted_args = np.argsort(dists[i, j])
-    sorted_dists = dists[i, j][sorted_args].round(2).astype(np.float16)
+    sorted_dists = dists[i, j][sorted_args].round(4).astype(np.float16)
 
     if return_indices:
         sorted_indices = np.c_[i[sorted_args], j[sorted_args]].astype(np.int16)
