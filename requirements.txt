@@ -1,5 +1,6 @@
 numpy>=1.22
 scipy>=1.10
 pyomo>=6.6
+gurobipy>=10
 py3Dmol>=2.0
 black>=22

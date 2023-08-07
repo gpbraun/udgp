@@ -5,7 +5,7 @@ Este módulo implementa a classe base para instâncias do problema uDGP.
 
 import numpy as np
 
-from udgp.models import M1, M2
+from udgp.models import M1, M2, M1gp, M2gp
 from udgp.utils import *
 
 from .artificial_molecule import artificial_molecule_points
@@ -34,6 +34,8 @@ class Instance:
         self.points = np.zeros((1, 3), dtype=np.float16)
 
         self.a_indices = np.empty((0, 3), dtype=np.int16)
+        self.status = "ok"
+        self.runtime = 0.0
 
         self.input_freqs = freqs
         self.input_points = points
@@ -41,40 +43,47 @@ class Instance:
     @property
     def m(self):
         """
-        Retorna: número de distsâncias remanescentes.
+        Retorna (int): número de distsâncias remanescentes.
         """
-        return self.dists.shape[0]
+        return len(self.dists)
 
     @property
     def fixed_n(self):
         """
-        Retorna: número de átomos da solução atual (fixados).
+        Retorna (int): número de átomos da solução atual (fixados).
         """
-        return self.points.shape[0]
+        return len(self.points)
 
     @property
     def repeat_dists(self):
         """
-        Retorna: lista com repetição (ordenada) de distsâncias remanescentes.
+        Retorna (numpy.ndarray): lista ordenada com repetição de distâncias remanescentes.
         """
         return np.repeat(self.dists, self.freqs)
 
     @property
     def input_repeat_dists(self):
         """
-        Retorna: lista com repetição (ordenada) de distsâncias de entrada.
+        Retorna (numpy.ndarray): lista ordenada com repetição de distâncias de entrada.
         """
         return np.repeat(self.dists, self.input_freqs)
 
+    @property
+    def solution_repeat_dists(self):
+        """
+        Retorna (numpy.ndarray): lista ordenada com repetição de distâncias já utilizadas.
+        """
+        return points_dists(self.points)
+
     def view(self, *args, **kwargs):
         """
-        Retorna: visualização da solução com py3Dmol.
+        Retorna (py3Dmol.view): visualização da solução com py3Dmol.
         """
         return points_view(self.points, *args, **kwargs)
 
     def view_input(self, *args, **kwargs):
         """
-        Retorna: visualização da instância com py3Dmol.
+        Retorna (py3Dmol.view): visualização da instância com py3Dmol.
         """
         if self.input_points is None:
             return
@@ -83,9 +92,7 @@ class Instance:
 
     def is_solved(self, threshold=1e-3):
         """
-        Retorna: verdadeiro se as distsâncias do input são as mesmas da da solução.
-
-        Referência: LIGA
+        Retorna (bool): verdadeiro se as distsâncias do input são as mesmas da da solução.
         """
         solution_repeat_dists = points_dists(self.points)
 
@@ -113,7 +120,7 @@ class Instance:
         - dists (numpy.ndarray): lista de distância com repetições para serem removidas
         - indices (numpy.ndarray): índices referentes às distâncias.
 
-        Retorna: verdadeiro se todas as distsâncias fornecidas estavam na lista de distsâncias remanescentes.
+        Retorna (bool): verdadeiro se todas as distsâncias fornecidas estavam na lista de distsâncias remanescentes.
         """
         new_freqs = self.freqs.copy()
 
@@ -134,13 +141,14 @@ class Instance:
                 return False
 
         self.freqs = new_freqs
+
         return True
 
     def add_points(self, new_points: np.ndarray, threshold=0.05):
         """
-                Adiciona (fixa) novas coordenadas à solução.
-        a
-                Retorna (bool): verdadeiro se as distâncias entre os novos pontos e os pontos já fixados estavam na lista de distâncias remanescentes.
+        Adiciona (fixa) novas coordenadas à solução.
+
+        Retorna (bool): verdadeiro se as distâncias entre os novos pontos e os pontos já fixados estavam na lista de distâncias remanescentes.
         """
         new_dists, new_indices = points_new_dists(
             new_points, self.points, return_indices=True
@@ -154,7 +162,7 @@ class Instance:
 
     def reset_with_core(self, core_type: str, n=5):
         """
-        Reseta a instância com um core de molécula artificial de n átomos como solução inicial.
+        Reinicia a instância com um core de molécula artificial de n átomos como solução inicial.
         """
         core_found = False
 
@@ -174,69 +182,62 @@ class Instance:
 
         self.points = core_points
 
-    def solve(
+    def solve_heuristic(self):
+        """
+        Usa uma heurística baseada no método TRIBOND para resolver a instância.
+        """
+        while not self.is_solved():
+            self.reset()
+            self.solve("M2", nx=4)
+            return
+
+    def solve_step(
         self,
         model_name,
-        nx=None,
-        ny=None,
+        nx: int | None = None,
+        ny: int | None = None,
+        max_gap: float = 5e-3,
         log=False,
+        previous_a: list | None = None,
     ):
         """
         Resolve a instância.
         """
-        self.reset()
-
         ny = self.fixed_n if ny is None else ny
         nx = self.n - self.fixed_n if nx is None else nx
 
         rng = np.random.default_rng()
-        y_indices = rng.choice(self.fixed_n, ny, replace=False)
+        y_indices = np.sort(rng.choice(self.fixed_n, ny, replace=False))
         x_indices = np.arange(self.fixed_n, nx + self.fixed_n)
 
-        if model_name == "M1":
-            model = M1(
-                x_indices,
-                y_indices,
-                self.dists,
-                self.freqs,
-                self.points,
-                relaxed=False,
-            )
+        relaxed = "R" in model_name
+        gurobipy = "gp" in model_name
 
-        elif model_name == "M1R":
-            model = M1(
-                x_indices,
-                y_indices,
-                self.dists,
-                self.freqs,
-                self.points,
-                relaxed=True,
-            )
+        if "M1" in model_name:
+            model = M1gp if gurobipy else M1
+        elif "M2" in model_name:
+            model = M2gp if gurobipy else M2
 
-        elif model_name == "M2":
-            model = M2(
-                x_indices,
-                y_indices,
-                self.dists,
-                self.freqs,
-                self.points,
-                relaxed=False,
-            )
+        m = model(
+            x_indices,
+            y_indices,
+            self.dists,
+            self.freqs,
+            self.points,
+            max_gap=max_gap,
+            relaxed=relaxed,
+            previous_a=previous_a,
+        )
 
-        elif model_name == "M2R":
-            model = M2(
-                x_indices,
-                y_indices,
-                self.dists,
-                self.freqs,
-                self.points,
-                relaxed=True,
-            )
+        solved = m.solve(log=log)
 
-        model.solve(log=log)
+        self.runtime += m.runtime
+
+        if not solved:
+            return False
 
         # ATUALIZA A INSTÂNCIA
-        new_points = model.solution_points()
+        new_points = m.solution_points()
         if not self.add_points(new_points, 0.1):
             return False
         else:
@@ -245,7 +246,7 @@ class Instance:
     @classmethod
     def from_points(cls, points, freq=True):
         """
-        Retorna: instância referente às coordenadas fornecidas.
+        Retorna (Instance): instância referente às coordenadas fornecidas.
         """
         dists = points_dists(points)
         freqs = None
@@ -258,7 +259,7 @@ class Instance:
     @classmethod
     def artificial_molecule(cls, n: int, seed: int = None, freq=True):
         """
-        Retorna: instância de molécula artificial com n átomos.
+        Retorna (Instance): instância de molécula artificial com n átomos.
 
         Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
         """
@@ -269,7 +270,7 @@ class Instance:
     @classmethod
     def c60(cls, freq=True):
         """
-        Retorna: instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
+        Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
 
         Referência: https://webbook.nist.gov/cgi/inchi?ID=C99685968&Mask=20
         """
@@ -280,7 +281,7 @@ class Instance:
     @classmethod
     def lj_cluster(cls, n, freq=True):
         """
-        Retorna: instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
+        Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
 
         Referência: https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/tables.150.html
         """

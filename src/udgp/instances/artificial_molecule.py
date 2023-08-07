@@ -91,6 +91,6 @@ def artificial_molecule_points(n: int, seed: int = None):
 
     for i in range(n):
         np.matmul(b, b_matrix(i, rng), out=b)
-        points[i] = (b @ col)[0:3].round(3)
+        points[i] = (b @ col)[0:3]
 
     return points

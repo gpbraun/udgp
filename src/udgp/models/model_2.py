@@ -65,15 +65,15 @@ class M2(BaseModel):
 
         @self.Constraint(self.IJ, self.K)
         def constr_x7(self, i, j, k):
-            return self.z[i, j, k] >= self.dists[k] * (
-                1 + self.p[i, j, k]
-            ) - self.d_max * (1 - self.a[i, j, k])
+            return self.z[i, j, k] >= self.dists[k] + self.p[i, j, k] - self.d_max * (
+                1 - self.a[i, j, k]
+            )
 
         @self.Constraint(self.IJ, self.K)
         def constr_x8(self, i, j, k):
-            return self.z[i, j, k] <= self.dists[k] * (
-                1 + self.p[i, j, k]
-            ) + self.d_max * (1 - self.a[i, j, k])
+            return self.z[i, j, k] <= self.dists[k] + self.p[i, j, k] + self.d_max * (
+                1 - self.a[i, j, k]
+            )
 
         # OBJETIVO
         def relaxed_objective(model):
