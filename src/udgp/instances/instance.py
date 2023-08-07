@@ -198,7 +198,8 @@ class Instance:
         model_name,
         nx: int | None = None,
         ny: int | None = None,
-        max_gap: float = 5e-3,
+        max_gap=5e-3,
+        max_threshold=1e-2,
         log=False,
         previous_a: list | None = None,
     ):
@@ -240,7 +241,7 @@ class Instance:
 
         # ATUALIZA A INSTÂNCIA
         new_points = m.solution_points()
-        if not self.add_points(new_points, 0.1):
+        if not self.add_points(new_points, max_threshold):
             return False
         else:
             return True
