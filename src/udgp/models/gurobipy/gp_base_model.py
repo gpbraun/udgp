@@ -22,8 +22,8 @@ class GPBaseModel(gp.Model):
         dists: np.ndarray,
         freqs: np.ndarray,
         fixed_points: np.ndarray,
-        max_gap=5.0e-3,
-        max_tol=1.0e-4,
+        max_gap=1.0e-4,
+        max_tol=1.0e-6,
         relaxed=False,
         previous_a: list | None = None,
         env=None,
@@ -55,8 +55,9 @@ class GPBaseModel(gp.Model):
         # PARÂMETROS
         self.max_gap = max_gap
         self.max_tol = max_tol
-        self.d_max = dists.max()
-        self.d_min = dists.min()
+        self.max_err = self.max_gap + self.max_tol
+        self.d_min = dists.min() - self.max_err
+        self.d_max = dists.max() + self.max_err
 
         self.dists = dists
         self.freqs = freqs
@@ -148,7 +149,7 @@ class GPBaseModel(gp.Model):
         Retorna: verdadeiro se uma solução foi encontrada
         """
         # PARÂMETROS DO SOLVER
-        mip_gap = self.max_gap * len(self.IJ)
+        mip_gap = self.max_gap
 
         self.Params.LogToConsole = log
         self.Params.NonConvex = 2

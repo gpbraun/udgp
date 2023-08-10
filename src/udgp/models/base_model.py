@@ -140,7 +140,7 @@ class BaseModel(pyo.ConcreteModel):
         opt = pyo.SolverFactory(solver, solver_io="python")
 
         # PARÂMETROS DO SOLVER
-        mip_gap = self.max_gap
+        mip_gap = self.max_gap * len(self.IJ)
         ## Gurobi
         if "gurobi" in solver.lower():
             opt.options["NonConvex"] = 2
