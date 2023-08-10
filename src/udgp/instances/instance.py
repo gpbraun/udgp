@@ -5,7 +5,7 @@ Este módulo implementa a classe base para instâncias do problema uDGP.
 
 import numpy as np
 
-from udgp.models import M1, M2, M1gp, M2gp
+from udgp.models import M1, M2, M3, M1gp, M2gp
 from udgp.utils import *
 
 from .artificial_molecule import artificial_molecule_points
@@ -219,6 +219,8 @@ class Instance:
             model = M1gp if gurobipy else M1
         elif "M2" in model_name:
             model = M2gp if gurobipy else M2
+        elif "M3" in model_name:
+            model = M3
 
         m = model(
             x_indices,

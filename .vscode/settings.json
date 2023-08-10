@@ -3,8 +3,11 @@
   "notebook.formatOnSave.enabled": false,
   "code-runner.runInTerminal": true,
   "code-runner.ignoreSelection": true,
-  "python.formatting.provider": "black",
   "python.analysis.typeCheckingMode": "off",
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
   "editor.codeActionsOnSave": {
     "source.organizeImports": true
   },
