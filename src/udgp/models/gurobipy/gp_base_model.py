@@ -22,6 +22,7 @@ class GPBaseModel(gp.Model):
         dists: np.ndarray,
         freqs: np.ndarray,
         fixed_points: np.ndarray,
+        time_limit=1e4,
         max_gap=1.0e-4,
         max_tol=1.0e-6,
         relaxed=False,
@@ -35,6 +36,7 @@ class GPBaseModel(gp.Model):
         self.nx = len(x_indices)
         self.m = len(dists)
         self.runtime = 0
+        self.time_limit = time_limit
 
         # CONJUNTOS
         ## Conjunto I
@@ -149,22 +151,21 @@ class GPBaseModel(gp.Model):
         Retorna: verdadeiro se uma solução foi encontrada
         """
         # PARÂMETROS DO SOLVER
-        mip_gap = self.max_gap
+        mip_gap = self.max_gap * len(self.IJ)
 
         self.Params.LogToConsole = log
+        self.Params.TimeLimit = self.time_limit
         self.Params.NonConvex = 2
         self.Params.MIPGap = mip_gap
         self.Params.IntFeasTol = self.max_tol
         self.Params.FeasibilityTol = self.max_tol
         self.Params.OptimalityTol = self.max_tol
-        # self.Params.Cuts = 2
 
         # OTIMIZA
         super(GPBaseModel, self).optimize()
         self.runtime = self.Runtime
 
         if self.Status == gp.GRB.INFEASIBLE or self.SolCount == 0:
-            print("Modelo inviável.")
             # self.status == "infeasible"
             return False
 

@@ -83,7 +83,7 @@ def artificial_molecule_points(n: int, seed: int = None):
     Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
     """
     rng = np.random.default_rng(seed)
-    points = np.empty((n, 3), dtype=np.float64)
+    points = np.zeros((n, 3), dtype=np.float64)
 
     b = b_matrix(0, rng)
     col = np.array([0, 0, 0, 1]).T

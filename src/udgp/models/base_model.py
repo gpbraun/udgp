@@ -1,7 +1,7 @@
 """
 Gabriel Braun, 2023
 
-Este módulo implementa o modelo base para instâncias do problema uDGP.
+Este módulo implementa o modelo base para instâncias do problema uDGP usando a biblioteca pyomo.
 """
 
 import numpy as np
@@ -20,6 +20,7 @@ class BaseModel(pyo.ConcreteModel):
         dists: np.ndarray,
         freqs: np.ndarray,
         fixed_points: np.ndarray,
+        time_limit=1e4,
         max_gap=1.0e-4,
         max_tol=1.0e-6,
         relaxed=False,
@@ -32,6 +33,7 @@ class BaseModel(pyo.ConcreteModel):
         self.ny = pyo.Param(initialize=len(y_indices))
         self.m = pyo.Param(initialize=len(dists))
         self.runtime = 0
+        self.time_limit = time_limit
 
         # CONJUNTOS
         ## Conjunto I
@@ -143,6 +145,7 @@ class BaseModel(pyo.ConcreteModel):
         mip_gap = self.max_gap * len(self.IJ)
         ## Gurobi
         if "gurobi" in solver.lower():
+            opt.options["TimeLimit"] = self.time_limit
             opt.options["NonConvex"] = 2
             opt.options["MIPGapAbs"] = mip_gap
             opt.options["IntFeasTol"] = self.max_tol
@@ -155,7 +158,6 @@ class BaseModel(pyo.ConcreteModel):
         self.runtime = opt._solver_model.getAttr("Runtime")
 
         if results.solver.termination_condition == "infeasible":
-            print("Modelo inviável.")
             # self.status == "infeasible"
             return False
 
