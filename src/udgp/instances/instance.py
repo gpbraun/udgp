@@ -114,7 +114,7 @@ class Instance:
         if reset_runtime:
             self.runtime = 0.0
 
-    def remove_dists(self, dists: np.ndarray, indices: np.ndarray, threshold=0.05):
+    def remove_dists(self, dists: np.ndarray, indices: np.ndarray, threshold=0.1):
         """
         Remove uma lista distâncias com repetições da lista de distsâncias remanescentes.
 
@@ -200,7 +200,7 @@ class Instance:
         ny: int | None = None,
         time_limit=1e4,
         max_gap=5e-3,
-        max_threshold=1e-2,
+        max_threshold=0.1,
         log=False,
         previous_a: list | None = None,
     ):
