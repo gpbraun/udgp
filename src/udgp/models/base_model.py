@@ -151,7 +151,7 @@ class BaseModel(pyo.ConcreteModel):
             opt.options["IntFeasTol"] = self.max_tol
             opt.options["FeasibilityTol"] = self.max_tol
             opt.options["OptimalityTol"] = self.max_tol
-            opt.options["Cuts"] = 2
+            opt.options["SolutionLimit "] = 1
 
         # OTIMIZA
         results = opt.solve(self, tee=log, report_timing=log)
