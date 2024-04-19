@@ -1,7 +1,7 @@
 """
-Gabriel Braun, 2023
+Gabriel Braun, 2024
 
-Este módulo implementa o modelo M2 para instâncias do problema uDGP.
+Este módulo implementa o modelo M3 para instâncias do problema uDGP.
 """
 
 import pyomo.environ as pyo
@@ -85,7 +85,7 @@ class M3(BaseModel):
         def objective(model):
             return (
                 1
-                + pyo.summation(model.w)
+                + sum(self.w[i, j, k] ** 2 for i, j, k in model.IJ * model.K)
                 + sum(
                     self.r[i, j] ** 2 - sum(self.v[i, j, l] ** 2 for l in self.L)
                     for i, j in self.IJ

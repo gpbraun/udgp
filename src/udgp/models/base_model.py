@@ -147,11 +147,11 @@ class BaseModel(pyo.ConcreteModel):
         if "gurobi" in solver.lower():
             opt.options["TimeLimit"] = self.time_limit
             opt.options["NonConvex"] = 2
-            opt.options["MIPGapAbs"] = mip_gap
-            opt.options["IntFeasTol"] = self.max_tol
-            opt.options["FeasibilityTol"] = self.max_tol
-            opt.options["OptimalityTol"] = self.max_tol
-            opt.options["SolutionLimit "] = 1
+            # opt.options["MIPGapAbs"] = mip_gap
+            # opt.options["IntFeasTol"] = self.max_tol
+            # opt.options["FeasibilityTol"] = self.max_tol
+            # opt.options["OptimalityTol"] = self.max_tol
+            # opt.options["SolutionLimit "] = 1
 
         # OTIMIZA
         results = opt.solve(self, tee=log, report_timing=log)
