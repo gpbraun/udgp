@@ -1,0 +1,13 @@
+name: udgp-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - pip
+  - numpy
+  - scipy
+  - pyomo
+  - py3Dmol
+  - gurobi::gurobi
+  - ibmdecisionoptimization::cplex
