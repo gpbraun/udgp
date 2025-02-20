@@ -35,8 +35,9 @@ class M2gp(GPBaseModel):
         self.z = self.addVars(
             self.IJK,
             name="z",
-            vtype=gp.GRB.SEMICONT,
-            lb=self.d_min,
+            # vtype=gp.GRB.SEMICONT,
+            vtype=gp.GRB.CONTINUOUS,
+            # lb=self.d_min,
             ub=self.d_max,
         )
 

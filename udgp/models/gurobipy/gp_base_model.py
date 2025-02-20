@@ -118,7 +118,8 @@ class GPBaseModel(gp.Model):
         self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.IJ)
         self.addConstrs(self.v[i, j] == self.x[i] - self.x[j] for i, j in self.IJxx)
         self.addConstrs(self.v[i, j] == self.y[i] - self.x[j] for i, j in self.IJyx)
-        self.addConstrs(
+
+        self.r_eq_constr = self.addConstrs(
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
         )
 
