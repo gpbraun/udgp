@@ -1,5 +1,12 @@
-"""Gabriel Braun, 2023
-Este módulo implementa o modelo M1 para instâncias do problema uDGP.
+"""
+Gabriel Braun, 2023
+This module implements the M3 model for instances of the uDGP using gurobipy,
+with a DCA (Difference-of-Convex Algorithm) approach for the continuous relaxation.
+The model inherits from GPBaseModel.
+
+IMPORTANT:
+To avoid the trivial solution, fix only a minimal number of vertices (e.g. fix vertex 0 at (0,0,0)
+and leave others free or fix them to nonzero positions). Alternatively, use the dispersion constraint.
 """
 
 import gurobipy as gp
@@ -7,147 +14,178 @@ import numpy as np
 
 from .gp_base_model import GPBaseModel
 
+# SIMP penalty parameter: higher values penalize fractional assignment variables.
+PENALTY_MU = 10.0  # adjust as needed
+
+# Dispersion threshold: forces free vertices (Ix) to have a minimum spread.
+DISPERSION_THRESHOLD = 1.0  # adjust as needed
+
 
 class M3gp(GPBaseModel):
     """
-    Model 3 for the uDGP:
-    A difference-of-convex formulation in Gurobi, based on
-    r[i,j]^2 >= v[i,j] · v[i,j] and an objective that includes
-    w[i,j,k]^2 + [r[i,j]^2 - v[i,j]·v[i,j]].
+    M3 model for uDGP (continuous relaxation with SIMP-like penalty and SOC constraints).
+
+    In this formulation:
+      - The original constraint r[i,j]^2 = v[i,j]^T v[i,j] is removed and replaced by a
+        second-order cone constraint enforcing:
+            r[i,j] >= || v[i,j] ||_2,
+        with r[i,j] forced to be nonnegative.
+      - The binary assignment variables a are relaxed (a ∈ [0,1]).
+      - A new continuous variable yy[k] is added for each k in K.
+      - A penalty term is added on (a[i,j,k])² (with weight PENALTY_MU) to encourage integrality.
+      - A dispersion constraint is added to force free vertices to have a nontrivial geometry.
+
+    The full DC objective is defined as:
+         Obj = [∑ₖ yy[k] + ∑_(i,j ∈ IJ) r[i,j]²]
+               - [∑_(i,j ∈ IJ) ∑_(l=0)² (v[i,j][l])² + PENALTY_MU * ∑_(i,j,k ∈ IJK) (a[i,j,k])²].
+
+    Then, a convex surrogate (dropping the concave part) is solved for initialization,
+    and DCA iterations linearize the concave part around the current solution.
     """
 
     def __init__(self, *args, **kwargs):
+        # Ensure relaxed mode so that a ∈ [0,1]
+        kwargs["relaxed"] = True
         super(M3gp, self).__init__(*args, **kwargs)
 
-        # ------------------------------------------------------
-        # 1) Remove the original r^2 == v·v constraint
-        #    so we can replace it with r^2 >= v·v.
-        # ------------------------------------------------------
-        # In gp_base_model.py, you added something like:
-        #
-        #  self.r_eq_constr = self.addConstrs(
-        #      self.r[i, j]**2 == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
-        #  )
-        #
-        # If so, you can remove them by:
-        #
-        #    for c in self.r_eq_constr.values():
-        #        self.remove(c)
-        #
-        # Or if they're unnamed, you need a custom approach:
-        #    all_constrs = self.getConstrs()
-        #    ... filter them out ...
-        #
-        # Below is a placeholder you can adapt to your naming scheme.
-
-        # Example placeholder if you stored them in self._r_eq_constr:
-        try:
-            for c in self._r_eq_constr.values():
-                self.remove(c)
-        except AttributeError:
-            pass  # If not stored, handle differently or skip.
-
-        # ------------------------------------------------------
-        # 2) Replace with the relaxed inequality:
-        #    r[i,j]^2 >= (v[i,j]·v[i,j]).
-        # ------------------------------------------------------
-        # Gurobi's addQConstr allows direct quadratic constraints:
+        # Force r's lower bound to 0 so that r is nonnegative.
         for i, j in self.IJ:
-            # r[i,j]^2 >= v[i,j]·v[i,j]
-            self.addQConstr(
-                self.r[i, j] * self.r[i, j] >= self.v[i, j] @ self.v[i, j],
-                name=f"r_ge_v_{i}_{j}",
-            )
+            self.r[i, j].LB = 0
 
-        # ------------------------------------------------------
-        # 3) Add new variables p, w, z (similar to model 2),
-        #    but we will not do a linear objective of sum w,
-        #    instead we do w^2 in the objective plus the
-        #    difference-of-convex term [r^2 - v·v].
-        # ------------------------------------------------------
-        self.p = self.addVars(
-            self.IJK,
-            name="p",
-            lb=-self.max_gap,
-            ub=self.max_gap,
-            vtype=gp.GRB.CONTINUOUS,
-        )
-
-        self.w = self.addVars(
-            self.IJK, name="w", lb=0, ub=self.max_gap, vtype=gp.GRB.CONTINUOUS
-        )
-
-        self.z = self.addVars(
-            self.IJK, name="z", lb=0, ub=self.d_max, vtype=gp.GRB.CONTINUOUS
-        )
-
-        # ------------------------------------------------------
-        # 4) Big-M constraints that tie (p, w, z) to a[i,j,k]
-        #    and r[i,j], similar to model 2, but unchanged.
-        # ------------------------------------------------------
-        # |p[i,j,k]| <= w[i,j,k]
-        self.addConstrs((self.w[i, j, k] >= self.p[i, j, k]) for (i, j, k) in self.IJK)
-        self.addConstrs((self.w[i, j, k] >= -self.p[i, j, k]) for (i, j, k) in self.IJK)
-
-        # z[i,j,k] = 0 if a[i,j,k] = 0; else approx r[i,j] ~ dists[k]+p[i,j,k]
-        self.addConstrs(
-            (self.z[i, j, k] >= self.r[i, j] - (1 - self.a[i, j, k]) * self.d_max)
-            for (i, j, k) in self.IJK
-        )
-        self.addConstrs(
-            (self.z[i, j, k] <= self.r[i, j] + (1 - self.a[i, j, k]) * self.d_max)
-            for (i, j, k) in self.IJK
-        )
-        self.addConstrs(
-            (self.z[i, j, k] >= -self.d_max * self.a[i, j, k]) for (i, j, k) in self.IJK
-        )
-        self.addConstrs(
-            (self.z[i, j, k] <= self.d_max * self.a[i, j, k]) for (i, j, k) in self.IJK
-        )
-        self.addConstrs(
-            (
-                self.z[i, j, k]
-                >= self.dists[k] + self.p[i, j, k] - (1 - self.a[i, j, k]) * self.d_max
-            )
-            for (i, j, k) in self.IJK
-        )
-        self.addConstrs(
-            (
-                self.z[i, j, k]
-                <= self.dists[k] + self.p[i, j, k] + (1 - self.a[i, j, k]) * self.d_max
-            )
-            for (i, j, k) in self.IJK
-        )
-
-        # ------------------------------------------------------
-        # 5) Define the difference-of-convex objective:
-        #
-        #    1
-        #  + ∑( w[i,j,k]^2 )
-        #  + ∑( r[i,j]^2 - v[i,j]·v[i,j] ).
-        #
-        # Gurobi’s objective can handle quadratic terms.
-        # We'll build it via a LinExpr or QuadExpr.
-        # ------------------------------------------------------
-        obj = gp.QuadExpr()
-
-        # Constant 1
-        obj += 1.0
-
-        # sum of w[i,j,k]^2
-        for i, j, k in self.IJK:
-            obj += self.w[i, j, k] * self.w[i, j, k]
-
-        # sum over i,j of r[i,j]^2 minus sum(v[i,j]^2)
+        # ----------------------------------------------------------------
+        # Remove the original r constraint and replace it with a SOC constraint.
+        # We enforce:
+        #       r[i,j] >= sqrt( (v[i,j][0])² + (v[i,j][1])² + (v[i,j][2])² )
+        # by calling addGenConstrSOC.
+        # ----------------------------------------------------------------
+        self.remove(self.constr_r)
+        self.constr_r = {}
         for i, j in self.IJ:
-            # r[i,j]^2
-            obj += self.r[i, j] * self.r[i, j]
-            # subtract (v[i,j,0]^2 + v[i,j,1]^2 + v[i,j,2]^2)
-            # self.v[i, j] is a 3D MVar, so do each component:
-            for comp in range(3):
-                obj -= self.v[i, j][comp] * self.v[i, j][comp]
+            self.constr_r[(i, j)] = self.addGenConstrSOC(
+                self.r[i, j],
+                [self.v[i, j][0], self.v[i, j][1], self.v[i, j][2]],
+                name=f"soc_{i}_{j}",
+            )
 
-        # Set the new objective (non-convex quadratic)
-        self.setObjective(obj, gp.GRB.MINIMIZE)
+        # ----------------------------------------------------------------
+        # Add a new continuous variable yy for each k in K.
+        # ----------------------------------------------------------------
+        self.yy = self.addVars(self.K, name="yy", lb=0, vtype=gp.GRB.CONTINUOUS)
 
+        # ----------------------------------------------------------------
+        # Add a dispersion constraint on the free vertices (Ix) to avoid the trivial solution.
+        # This forces the sum of squared norms of the free vertices to be at least DISPERSION_THRESHOLD.
+        # ----------------------------------------------------------------
+        disp_expr = gp.quicksum(
+            self.x[i][l] * self.x[i][l] for i in self.Ix for l in range(3)
+        )
+        self.addConstr(disp_expr >= DISPERSION_THRESHOLD, name="dispersion")
+
+        # ----------------------------------------------------------------
+        # Define the full DC objective.
+        # Let:
+        #   f(x) = ∑ₖ yy[k] + ∑_(i,j ∈ IJ) r[i,j]²    (convex part)
+        #   g(x) = ∑_(i,j ∈ IJ)∑_(l=0)² (v[i,j][l])² + PENALTY_MU * ∑_(i,j,k ∈ IJK) (a[i,j,k])²  (convex)
+        # Then, Obj = f(x) - g(x).
+        # ----------------------------------------------------------------
+        convex_part = gp.quicksum(self.yy[k] for k in self.K) + gp.quicksum(
+            self.r[i, j] * self.r[i, j] for (i, j) in self.IJ
+        )
+        concave_part = gp.quicksum(
+            self.v[i, j][l] * self.v[i, j][l] for (i, j) in self.IJ for l in range(3)
+        ) + PENALTY_MU * gp.quicksum(
+            self.a[i, j, k] * self.a[i, j, k] for (i, j, k) in self.IJK
+        )
+        full_obj = convex_part - concave_part
+        self.setObjective(full_obj, gp.GRB.MINIMIZE)
         self.update()
+
+    def solve(self, max_iter=20, tol=1e-5, log=False):
+        """
+        Solves the continuous relaxation using a DCA approach.
+
+        Overall, the DC objective is:
+             Obj = f(x) - g(x), where
+             f(x) = ∑ₖ yy[k] + ∑_(i,j ∈ IJ) r[i,j]²    (convex)
+             g(x) = ∑_(i,j ∈ IJ)∑_(l=0)² (v[i,j][l])² +
+                    PENALTY_MU * ∑_(i,j,k ∈ IJK) (a[i,j,k])²    (convex).
+
+        Step 1: Convex Initialization.
+          Solve the convex surrogate by dropping g(x):
+              Obj_init = ∑ₖ yy[k] + ∑_(i,j ∈ IJ) r[i,j]².
+          This provides an initial solution.
+
+        Step 2: DCA Iterations.
+          At each iteration, linearize the concave part g(x) around the current solution.
+          For each (i,j) and each component l, the derivative of (v[i,j][l])² is 2*v[i,j][l]_t.
+          For each (i,j,k), the derivative of (a[i,j,k])² is 2*a[i,j,k]_t.
+          Replace -g(x) by:
+              - ∑_(i,j)∑_(l) 2*v_t[i,j][l]*v[i,j][l] - PENALTY_MU * ∑_(i,j,k) 2*a_t[i,j,k]*a[i,j,k].
+          The updated objective becomes:
+              Obj = f(x) + (linearized - g(x)),
+          which is convex.
+        """
+        # --- Step 1: Convex Initialization ---
+        init_obj = gp.quicksum(self.yy[k] for k in self.K) + gp.quicksum(
+            self.r[i, j] * self.r[i, j] for (i, j) in self.IJ
+        )
+        self.setObjective(init_obj, gp.GRB.MINIMIZE)
+        self.update()
+
+        # Set solver parameters for convex subproblems.
+        self.Params.LogToConsole = log
+        self.Params.TimeLimit = self.time_limit
+        self.Params.NonConvex = 0  # Force convex mode.
+        self.Params.MIPGap = 1e-6
+        self.Params.IntFeasTol = self.max_tol
+        self.Params.FeasibilityTol = self.max_tol
+        self.Params.OptimalityTol = self.max_tol
+
+        self.optimize()
+        if self.Status == gp.GRB.INFEASIBLE or self.SolCount == 0:
+            print("Initial convex solution infeasible.")
+            return False
+        prev_obj = self.ObjVal
+        print("Iteration 0 (convex init): Objective =", prev_obj)
+
+        # --- Step 2: DCA Iterations ---
+        for it in range(1, max_iter + 1):
+            # Extract current values of v and a.
+            v_vals = {
+                (i, j): [self.v[i, j][l].X for l in range(3)] for (i, j) in self.IJ
+            }
+            a_vals = {(i, j, k): self.a[i, j, k].X for (i, j, k) in self.IJK}
+
+            # f(x) remains:
+            f_part = gp.quicksum(self.yy[k] for k in self.K) + gp.quicksum(
+                self.r[i, j] * self.r[i, j] for (i, j) in self.IJ
+            )
+            # Linearize the concave part g(x):
+            lin_v = gp.quicksum(
+                -2 * v_vals[(i, j)][l] * self.v[i, j][l]
+                for (i, j) in self.IJ
+                for l in range(3)
+            )
+            lin_a = gp.quicksum(
+                -2 * PENALTY_MU * a_vals[(i, j, k)] * self.a[i, j, k]
+                for (i, j, k) in self.IJK
+            )
+            lin_concave = lin_v + lin_a
+
+            new_obj = f_part + lin_concave
+            self.setObjective(new_obj, gp.GRB.MINIMIZE)
+            self.update()
+
+            self.optimize()
+            if self.Status == gp.GRB.INFEASIBLE or self.SolCount == 0:
+                print(f"Subproblem infeasible at iteration {it}.")
+                return False
+            curr_obj = self.ObjVal
+            print(f"Iteration {it}: Objective =", curr_obj)
+            print("x solution:", np.array([self.x[i].X for i in self.Ix]))
+            if abs(prev_obj - curr_obj) < tol:
+                print("Convergence reached.")
+                break
+            prev_obj = curr_obj
+
+        return True
