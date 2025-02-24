@@ -1,181 +1,201 @@
-"""
-Gabriel Braun, 2024
-
-Este módulo implementa o modelo M3 para instâncias do problema uDGP utilizando Pyomo,
-com a implementação do algoritmo DCA (Difference-of-Convex Algorithm) e a restrição
-SOC escrita na forma:
-    sqrt(sum(v[i,j,l]^2 for l in L)) <= r[i,j],
-garantindo que r[i,j] >= 0.
-"""
-
+import numpy as np
 import pyomo.environ as pyo
-from pyomo.environ import sqrt
 
 from .base_model import BaseModel
 
 
 class M3(BaseModel):
-    """Modelo M3 para o uDGP com algoritmo DCA e restrição SOC explícita para r."""
+    """
+    Modelo M3 'do zero', com:
+      - Primeira resolução do problema não convexo (f_expr - g_expr),
+        usando Gurobi NonConvex=2.
+      - Iterações subsequentes de DCA (Difference of Convex functions Algorithm),
+        onde o objetivo é f_expr + aproximacao_linear(-g_expr).
+    """
 
     def __init__(self, *args, **kwargs):
         super(M3, self).__init__(*args, **kwargs)
 
-        # Forçar o bound inferior de r a 0 para garantir a equivalência com a restrição SOC
-        for i, j in self.IJ:
-            self.r[i, j].setlb(0)
-
-        # Variáveis auxiliares adicionais
+        # 1) Variáveis adicionais (p, w, z), seguindo a ideia do model_3.py
         self.p = pyo.Var(
-            self.IJ,
-            self.K,
-            within=pyo.Reals,
-            bounds=(-self.max_gap, self.max_gap),
+            self.IJ, self.K, within=pyo.Reals, bounds=(-self.max_gap, self.max_gap)
         )
         self.w = pyo.Var(
-            self.IJ,
-            self.K,
-            within=pyo.NonNegativeReals,
-            bounds=(0, self.max_gap),
+            self.IJ, self.K, within=pyo.NonNegativeReals, bounds=(0, self.max_gap)
         )
         self.z = pyo.Var(
-            self.IJ,
-            self.K,
-            within=pyo.NonNegativeReals,
-            bounds=(0, self.d_max),
+            self.IJ, self.K, within=pyo.NonNegativeReals, bounds=(0, self.d_max)
         )
 
-        # Remover a restrição original de r definida na classe base
-        # (a restrição original era: r[i,j]^2 == sum(v[i,j,l]^2 for l in L))
-        self.del_component(self.constr_r)
+        # 2) Ajustar restrição r[i,j]^2 >= sum(v[i,j,l]^2)
+        if hasattr(self, "constr_r"):
+            self.del_component(self.constr_r)
 
-        # Nova restrição SOC: sqrt(sum(v[i,j,l]^2 for l in L)) <= r[i,j]
         @self.Constraint(self.IJ)
-        def soc_constr(model, i, j):
-            return sqrt(sum(model.v[i, j, l] ** 2 for l in model.L)) <= model.r[i, j]
+        def constr_r(m, i, j):
+            return m.r[i, j] ** 2 >= sum(m.v[i, j, l] ** 2 for l in m.L)
 
-        # Outras restrições Big‑M que ligam (p, w, z) à atribuição a e à distância r
+        # 3) Demais restrições x1..x8
         @self.Constraint(self.IJ, self.K)
-        def constr_x1(model, i, j, k):
-            return model.w[i, j, k] >= model.p[i, j, k]
-
-        @self.Constraint(self.IJ, self.K)
-        def constr_x2(model, i, j, k):
-            return model.w[i, j, k] >= -model.p[i, j, k]
+        def constr_x1(m, i, j, k):
+            return m.w[i, j, k] >= m.p[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x3(model, i, j, k):
-            return model.z[i, j, k] >= model.r[i, j] - model.d_max * (
-                1 - model.a[i, j, k]
+        def constr_x2(m, i, j, k):
+            return m.w[i, j, k] >= -m.p[i, j, k]
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x3(m, i, j, k):
+            return m.z[i, j, k] >= m.r[i, j] - m.d_max * (1 - m.a[i, j, k])
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x4(m, i, j, k):
+            return m.z[i, j, k] <= m.r[i, j] + m.d_max * (1 - m.a[i, j, k])
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x5(m, i, j, k):
+            return m.z[i, j, k] >= -m.d_max * m.a[i, j, k]
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x6(m, i, j, k):
+            return m.z[i, j, k] <= m.d_max * m.a[i, j, k]
+
+        @self.Constraint(self.IJ, self.K)
+        def constr_x7(m, i, j, k):
+            return m.z[i, j, k] >= (
+                m.dists[k] + m.p[i, j, k] - m.d_max * (1 - m.a[i, j, k])
             )
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x4(model, i, j, k):
-            return model.z[i, j, k] <= model.r[i, j] + model.d_max * (
-                1 - model.a[i, j, k]
+        def constr_x8(m, i, j, k):
+            return m.z[i, j, k] <= (
+                m.dists[k] + m.p[i, j, k] + m.d_max * (1 - m.a[i, j, k])
             )
 
-        @self.Constraint(self.IJ, self.K)
-        def constr_x5(model, i, j, k):
-            return model.z[i, j, k] >= -model.d_max * model.a[i, j, k]
+        # 4) Definições f_expr, g_expr
+        def _f_rule(m):
+            # f(X) = 1 + Σ(w^2) + Σ(r^2)
+            return (
+                1
+                + sum(m.w[i, j, k] ** 2 for i, j, k in m.IJ * m.K)
+                + sum(m.r[i, j] ** 2 for i, j in m.IJ)
+            )
 
-        @self.Constraint(self.IJ, self.K)
-        def constr_x6(model, i, j, k):
-            return model.z[i, j, k] <= model.d_max * model.a[i, j, k]
+        self.f_expr = pyo.Expression(rule=_f_rule)
 
-        @self.Constraint(self.IJ, self.K)
-        def constr_x7(model, i, j, k):
-            return model.z[i, j, k] >= model.dists[k] + model.p[
-                i, j, k
-            ] - model.d_max * (1 - model.a[i, j, k])
+        def _g_rule(m):
+            # g(X) = Σ(v^2)
+            return sum(m.v[i, j, l] ** 2 for i, j in m.IJ for l in m.L)
 
-        @self.Constraint(self.IJ, self.K)
-        def constr_x8(model, i, j, k):
-            return model.z[i, j, k] <= model.dists[k] + model.p[
-                i, j, k
-            ] + model.d_max * (1 - model.a[i, j, k])
+        self.g_expr = pyo.Expression(rule=_g_rule)
 
-        # Função objetivo original (modelo DC):
-        # F(x) = 1 + ∑_{(i,j,k) ∈ IJ×K} w[i,j,k]^2 + ∑_{(i,j) ∈ IJ} r[i,j]^2 - ∑_{(i,j) ∈ IJ} ∑_{l ∈ L} v[i,j,l]^2
-        def objective_original(model):
-            term1 = 1
-            term2 = sum(model.w[i, j, k] ** 2 for (i, j) in model.IJ for k in model.K)
-            term3 = sum(model.r[i, j] ** 2 for (i, j) in model.IJ)
-            term4 = sum(model.v[i, j, l] ** 2 for (i, j) in model.IJ for l in model.L)
-            return term1 + term2 + term3 - term4
+        # Removemos qualquer objeto "obj" se existir (para segurança)
+        if hasattr(self, "obj"):
+            self.del_component(self.obj)
 
-        self.obj = pyo.Objective(rule=objective_original, sense=pyo.minimize)
-
-    def solve(self, solver="gurobi", log=False, max_iter=20, tol=1e-5):
+    def solve(self, solver="gurobi", log=False, max_dca_iters=10, dca_tol=1e-4):
         """
-        Implementa o algoritmo DCA para resolver o modelo.
+        Passo 1: Resolve o problema não convexo  min [f_expr - g_expr].
+                 (Gurobi com NonConvex=2, se solver=gurobi)
+        Passo 2: Itera DCA, substituindo -g_expr por sua aproximação linear
+                 no ponto v^k, para k=1..max_dca_iters.
 
-        Em cada iteração, resolve-se um problema convexo (com a restrição SOC para r) e lineariza-se a parte
-        não convexa da função objetivo, isto é, -∑_{(i,j) ∈ IJ}∑_{l ∈ L} v[i,j,l]^2.
-
-        Parâmetros:
-            solver (str): nome do solver (por exemplo, "gurobi").
-            log (bool): se True, exibe os logs do solver.
-            max_iter (int): número máximo de iterações.
-            tol (float): tolerância para convergência da função objetivo.
-
-        Retorna:
-            True se encontrar uma solução viável; False caso contrário.
+        Retorna True se não houve inviabilidade; False caso contrário.
         """
-        # Atenção: para que a restrição SOC seja reconhecida, use o solver "gurobi"
-        # (e não "gurobi_direct") ou outro solver que suporte SOC de forma nativa.
         opt = pyo.SolverFactory(solver, solver_io="python")
-        if "gurobi" in solver.lower():
+        if solver.lower().startswith("gurobi"):
+            opt.options["NonConvex"] = 2
             opt.options["TimeLimit"] = self.time_limit
 
-        # Resolver inicialmente com o objetivo original
+        # --------------------------------------------------
+        # (A) Primeira fase: problema não convexo original
+        #     obj = f_expr - g_expr
+        # --------------------------------------------------
+        # 1) Se existir self.obj, remover
+        if hasattr(self, "obj"):
+            self.del_component(self.obj)
+
+        opt.options["SolutionLimit"] = 20
+
+        # 2) Criar e anexar a objective
+        self.obj = pyo.Objective(expr=self.f_expr - self.g_expr, sense=pyo.minimize)
+
+        # 3) Resolver
         results = opt.solve(self, tee=log)
         if results.solver.termination_condition == pyo.TerminationCondition.infeasible:
-            print("Problema inviável na iteração inicial.")
+            print("[M3] ERRO: primeira fase inviável.")
             return False
 
-        prev_obj = pyo.value(self.obj)
-        print(f"Iteração 0: Objetivo = {prev_obj}")
+        # 4) Guardar old_v
+        old_v = {}
+        for i, j in self.IJ:
+            for l in self.L:
+                val = self.v[i, j, l].value
+                if val is None:
+                    val = 0.0
+                old_v[(i, j, l)] = val
 
-        # Iterações do DCA
-        for it in range(1, max_iter + 1):
-            # Obter os valores atuais das variáveis v para cada (i,j,l)
-            v_current = {
-                (i, j, l): pyo.value(self.v[i, j, l])
-                for (i, j) in self.IJ
-                for l in self.L
-            }
+        # 5) Remover a objective para não causar 'multiple objectives'
+        self.del_component(self.obj)
 
-            # Construir novo objetivo com linearização da parte não convexa:
-            # Linearizamos cada v[i,j,l]^2 por 2*v_current[i,j,l]*v[i,j,l] (desprezando constantes)
-            expr = 1
-            expr += sum(self.w[i, j, k] ** 2 for (i, j) in self.IJ for k in self.K)
-            expr += sum(self.r[i, j] ** 2 for (i, j) in self.IJ)
-            expr -= sum(
-                2 * v_current[(i, j, l)] * self.v[i, j, l]
-                for (i, j) in self.IJ
-                for l in self.L
-            )
+        # --------------------------------------------------
+        # (B) Iterações de DCA
+        # --------------------------------------------------
+        opt.options["SolutionLimit"] = 100
 
-            # Atualizar a função objetivo
-            self.del_component(self.obj)
-            self.obj = pyo.Objective(expr=expr, sense=pyo.minimize)
-            self.reclassify_block()
+        for it in range(max_dca_iters):
+            # (1) Subgradiente de -g(X) = -2 * v^k
+            subgrad = {}
+            for key, v_val in old_v.items():
+                subgrad[key] = -2.0 * v_val
 
+            # (2) Definir objective = f_expr + Σ(subgrad·v).
+            if hasattr(self, "obj"):
+                self.del_component(self.obj)
+
+            def dca_objective_rule(m):
+                linear_part = 0
+                for (i, j, l), grad_val in subgrad.items():
+                    linear_part += grad_val * m.v[i, j, l]
+                return m.f_expr + linear_part
+
+            self.obj = pyo.Objective(rule=dca_objective_rule, sense=pyo.minimize)
+
+            # (3) Resolve
             results = opt.solve(self, tee=log)
             if (
                 results.solver.termination_condition
                 == pyo.TerminationCondition.infeasible
             ):
-                print(f"Problema inviável na iteração {it}.")
+                print(f"[DCA] it={it}: inviável.")
                 return False
 
-            curr_obj = pyo.value(self.obj)
-            print(f"Iteração {it}: Objetivo = {curr_obj}")
+            # (4) Calcula diferença
+            new_v = {}
+            max_diff = 0.0
+            for i, j in self.IJ:
+                for l in self.L:
+                    val = self.v[i, j, l].value
+                    if val is None:
+                        val = 0.0
+                    new_v[(i, j, l)] = val
+                    diff = abs(val - old_v[(i, j, l)])
+                    if diff > max_diff:
+                        max_diff = diff
 
-            if abs(prev_obj - curr_obj) < tol:
-                print("Critério de convergência atingido.")
+            if log:
+                print(f"[DCA] it={it}, max_diff={max_diff:.4g}")
+
+            # Atualiza old_v
+            old_v = new_v
+
+            # (5) Critério de parada
+            if it >= 1 and max_diff < dca_tol:
+                if log:
+                    print(f"[DCA] Convergência na iteração {it}, diff={max_diff:.2e}")
                 break
 
-            prev_obj = curr_obj
+            # Remover obj para não manter vários de uma só vez
+            self.del_component(self.obj)
 
         return True

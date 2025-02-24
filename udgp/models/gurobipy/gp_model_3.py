@@ -37,7 +37,7 @@ class M3gp(GPBaseModel):
 
     def __init__(self, *args, **kwargs):
         # Ensure relaxed mode so that a ∈ [0,1]
-        kwargs["relaxed"] = True
+        # kwargs["relaxed"] = True
         super(M3gp, self).__init__(*args, **kwargs)
 
         # Force r's lower bound to 0 so that r^2 is convex.
@@ -149,11 +149,11 @@ class M3gp(GPBaseModel):
                 for (i, j) in self.IJ
                 for l in range(3)
             )
-            lin_a = gp.quicksum(
-                -2 * PENALTY_MU * a_vals[(i, j, k)] * self.a[i, j, k]
-                for (i, j, k) in self.IJK
-            )
-            lin_concave = lin_v + lin_a
+            # lin_a = gp.quicksum(
+            #     -2 * PENALTY_MU * a_vals[(i, j, k)] * self.a[i, j, k]
+            #     for (i, j, k) in self.IJK
+            # )
+            lin_concave = lin_v  # +lin_a
 
             new_obj = f_part + lin_concave
             self.setObjective(new_obj, gp.GRB.MINIMIZE)
