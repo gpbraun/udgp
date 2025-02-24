@@ -7,7 +7,11 @@ print(gp.__version__)
 
 
 N = 6
-instance = Instance.artificial_molecule(N, freq=True, seed=123456)
+instance = Instance.artificial_molecule(
+    N,
+    freq=True,
+    seed=123456,
+)
 # instance.view_input()
 
 instance.reset(reset_runtime=True)

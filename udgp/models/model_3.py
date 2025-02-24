@@ -93,7 +93,7 @@ class M3(BaseModel):
         if hasattr(self, "obj"):
             self.del_component(self.obj)
 
-    def solve(self, solver="gurobi", log=False, max_dca_iters=100, dca_tol=1e-4):
+    def solve(self, solver="gurobi", log=False, max_dca_iters=100, dca_tol=1e-6):
         """
         Passo 1: Resolve o problema não convexo  min [f_expr - g_expr].
                  (Gurobi com NonConvex=2, se solver=gurobi)
@@ -116,8 +116,8 @@ class M3(BaseModel):
 
         opt.options["NonConvex"] = 2
         opt.options["MIPFocus"] = 1
-        # opt.options["MIPGap"] = 3
-        opt.options["NodeLimit"] = 10_000
+        opt.options["Heuristics"] = 0.5
+        opt.options["SolutionLimit"] = 20
 
         # 2) Criar e anexar a objective
         self.obj = pyo.Objective(expr=self.f_expr - self.g_expr, sense=pyo.minimize)
@@ -144,7 +144,9 @@ class M3(BaseModel):
         # (B) Iterações de DCAt
         # --------------------------------------------------
         opt.options["NonConvex"] = 1
-        # opt.options["SolutionLimit"] = 100
+        opt.options["SolutionLimit"] = 1000
+        opt.options["MIPFocus"] = 0
+        opt.options["Heuristics"] = 0.05
 
         for it in range(max_dca_iters):
             # (1) Subgradiente de -g(X) = -2 * v^k
@@ -165,7 +167,7 @@ class M3(BaseModel):
             self.obj = pyo.Objective(rule=dca_objective_rule, sense=pyo.minimize)
 
             # (3) Resolve
-            results = opt.solve(self, tee=log)
+            results = opt.solve(self, tee=log, warmstart=True)
             if (
                 results.solver.termination_condition
                 == pyo.TerminationCondition.infeasible
