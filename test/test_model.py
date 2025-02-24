@@ -1,6 +1,10 @@
+import gurobipy as gp
 import numpy as np
 
 from udgp import Instance
+
+print(gp.__version__)
+
 
 N = 5
 instance = Instance.artificial_molecule(N, freq=True, seed=123456)
