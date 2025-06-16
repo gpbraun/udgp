@@ -1,3 +1,3 @@
-from udgp.instances import *
+from udgp.instance import *
 
-VERSION = "2025.01.26"
+VERSION = "2025.06.16"

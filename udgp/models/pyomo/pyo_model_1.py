@@ -6,14 +6,14 @@ Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 
 import pyomo.environ as pyo
 
-from .base_model import BaseModel
+from .pyo_base_model import pyoBaseModel
 
 
-class M1(BaseModel):
+class pyoM1(pyoBaseModel):
     """Modelo M1 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(M1, self).__init__(*args, **kwargs)
+        super(pyoM1, self).__init__(*args, **kwargs)
 
         # VARIÁVEIS
         self.s = pyo.Var(

@@ -2,24 +2,23 @@
 Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
-import gurobipy as gp
-import numpy as np
+import gurobipy as gpy
 
-from .gp_base_model import GPBaseModel
+from .gpy_base_model import gpyBaseModel
 
 
-class M2gp(GPBaseModel):
+class gpyM2(gpyBaseModel):
     """Modelo M2 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(M2gp, self).__init__(*args, **kwargs)
+        super(gpyM2, self).__init__(*args, **kwargs)
 
         # VARIÁVEIS
         ## Erro no cálculo da distância
         self.p = self.addVars(
             self.IJK,
             name="p",
-            vtype=gp.GRB.CONTINUOUS,
+            vtype=gpy.GRB.CONTINUOUS,
             lb=-self.max_gap,
             ub=self.max_gap,
         )
@@ -27,7 +26,7 @@ class M2gp(GPBaseModel):
         self.w = self.addVars(
             self.IJK,
             name="w",
-            vtype=gp.GRB.CONTINUOUS,
+            vtype=gpy.GRB.CONTINUOUS,
             lb=0,
             ub=self.max_gap,
         )
@@ -36,7 +35,7 @@ class M2gp(GPBaseModel):
             self.IJK,
             name="z",
             # vtype=gp.GRB.SEMICONT,
-            vtype=gp.GRB.CONTINUOUS,
+            vtype=gpy.GRB.CONTINUOUS,
             # lb=self.d_min,
             ub=self.d_max,
         )
@@ -75,10 +74,10 @@ class M2gp(GPBaseModel):
                 1
                 + self.w.sum()
                 + len(self.IJ)
-                - gp.quicksum(
+                - gpy.quicksum(
                     self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.IJK
                 ),
-                gp.GRB.MINIMIZE,
+                gpy.GRB.MINIMIZE,
             )
         else:
-            self.setObjective(1 + self.w.sum(), gp.GRB.MINIMIZE)
+            self.setObjective(1 + self.w.sum(), gpy.GRB.MINIMIZE)

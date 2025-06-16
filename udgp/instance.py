@@ -5,11 +5,9 @@ Este módulo implementa a classe base para instâncias do problema uDGP.
 
 import numpy as np
 
-from udgp.models import M1, M2, M3, M1gp, M2gp, M3gp
+from udgp.instances import *
+from udgp.models import get_model
 from udgp.utils import *
-
-from .artificial_molecule import artificial_molecule_points
-from .nanoparticles import c60, lj_cluster_points
 
 
 class Instance:
@@ -195,14 +193,16 @@ class Instance:
 
     def solve_step(
         self,
-        model_name,
+        model_name: str,
         nx: int | None = None,
         ny: int | None = None,
+        relaxed: bool = False,
         time_limit=1e4,
         max_gap=5e-3,
         max_threshold=0.1,
         log=False,
         previous_a: list | None = None,
+        backend="pyomo",
     ):
         """
         Resolve a instância.
@@ -214,15 +214,7 @@ class Instance:
         y_indices = np.sort(rng.choice(self.fixed_n, ny, replace=False))
         x_indices = np.arange(self.fixed_n, nx + self.fixed_n)
 
-        relaxed = "r" in model_name.lower()
-        gurobipy = "gp" in model_name.lower()
-
-        if "M1" in model_name:
-            model = M1gp if gurobipy else M1
-        elif "M2" in model_name:
-            model = M2gp if gurobipy else M2
-        elif "M3" in model_name:
-            model = M3gp if gurobipy else M3
+        model = get_model(model_name, backend=backend)
 
         m = model(
             x_indices,
@@ -275,17 +267,6 @@ class Instance:
         return cls.from_points(points, freq)
 
     @classmethod
-    def c60(cls, freq=True):
-        """
-        Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
-
-        Referência: https://webbook.nist.gov/cgi/inchi?ID=C99685968&Mask=20
-        """
-        points = c60()
-
-        return cls.from_points(points, freq)
-
-    @classmethod
     def lj_cluster(cls, n, freq=True):
         """
         Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
@@ -293,5 +274,16 @@ class Instance:
         Referência: https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/tables.150.html
         """
         points = lj_cluster_points(n)
+
+        return cls.from_points(points, freq)
+
+    @classmethod
+    def c60(cls, freq=True):
+        """
+        Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
+
+        Referência: https://webbook.nist.gov/cgi/inchi?ID=C99685968&Mask=20
+        """
+        points = c60_points()
 
         return cls.from_points(points, freq)

@@ -8,7 +8,7 @@ import numpy as np
 import pyomo.environ as pyo
 
 
-class BaseModel(pyo.ConcreteModel):
+class pyoBaseModel(pyo.ConcreteModel):
     """
     Modelo base para o uDGP.
     """
@@ -26,7 +26,7 @@ class BaseModel(pyo.ConcreteModel):
         relaxed=False,
         previous_a: list | None = None,
     ):
-        super(BaseModel, self).__init__()
+        super(pyoBaseModel, self).__init__()
 
         # PARÂMETROS DA INSTÂNCIA
         self.nx = pyo.Param(initialize=len(x_indices))
@@ -61,11 +61,8 @@ class BaseModel(pyo.ConcreteModel):
         self.A = pyo.Set(initialize=np.arange(n_previous_a))
 
         # PARÂMETROS
-        self.max_gap = max_gap
-        self.max_tol = max_tol
-        self.max_err = self.max_gap + self.max_tol
-        self.d_min = pyo.Param(initialize=dists[freqs != 0].min() - self.max_err)
-        self.d_max = pyo.Param(initialize=dists[freqs != 0].max() + self.max_err)
+        self.d_min = pyo.Param(initialize=dists[freqs != 0].min())
+        self.d_max = pyo.Param(initialize=dists[freqs != 0].max())
 
         self.dists = pyo.Param(
             self.K,

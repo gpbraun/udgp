@@ -2,38 +2,37 @@
 Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
-import gurobipy as gp
-import numpy as np
+import gurobipy as gpy
 
-from .gp_base_model import GPBaseModel
+from .gpy_base_model import gpyBaseModel
 
 
-class M1gp(GPBaseModel):
+class gpyM1(gpyBaseModel):
     """Modelo M1 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(M1gp, self).__init__(*args, **kwargs)
+        super(gpyM1, self).__init__(*args, **kwargs)
         # VARIÁVEIS
         self.s = self.addVars(
             self.IJK,
             name="s",
-            vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+            vtype=gpy.GRB.CONTINUOUS,
+            lb=-gpy.GRB.INFINITY,
+            ub=gpy.GRB.INFINITY,
         )
         self.t = self.addVars(
             self.IJK,
             name="t",
-            vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+            vtype=gpy.GRB.CONTINUOUS,
+            lb=-gpy.GRB.INFINITY,
+            ub=gpy.GRB.INFINITY,
         )
         self.u = self.addVars(
             self.IJK,
             name="u",
-            vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+            vtype=gpy.GRB.CONTINUOUS,
+            lb=-gpy.GRB.INFINITY,
+            ub=gpy.GRB.INFINITY,
         )
 
         # RESTRIÇÕES
@@ -53,12 +52,12 @@ class M1gp(GPBaseModel):
                 1
                 + self.u.sum()
                 + len(self.IJ)
-                - gp.quicksum(
+                - gpy.quicksum(
                     self.a[i, j, k] * self.a[i, j, k] - 1 for i, j, k in self.IJK
                 ),
-                gp.GRB.MINIMIZE,
+                gpy.GRB.MINIMIZE,
             )
         else:
-            self.setObjective(self.u.sum() + 1, gp.GRB.MINIMIZE)
+            self.setObjective(self.u.sum() + 1, gpy.GRB.MINIMIZE)
 
         self.update()

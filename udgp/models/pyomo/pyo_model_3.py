@@ -1,10 +1,10 @@
 import numpy as np
 import pyomo.environ as pyo
 
-from .base_model import BaseModel
+from .pyo_base_model import pyoBaseModel
 
 
-class M3(BaseModel):
+class pyoM3(pyoBaseModel):
     """
     Modelo M3 'do zero', com:
       - Primeira resolução do problema não convexo (f_expr - g_expr),
@@ -14,7 +14,7 @@ class M3(BaseModel):
     """
 
     def __init__(self, *args, **kwargs):
-        super(M3, self).__init__(*args, **kwargs)
+        super(pyoM3, self).__init__(*args, **kwargs)
 
         # 1) Variáveis adicionais (p, w, z), seguindo a ideia do model_3.py
         self.p = pyo.Var(

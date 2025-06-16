@@ -6,14 +6,14 @@ Este módulo implementa o modelo M2 para instâncias do problema uDGP.
 
 import pyomo.environ as pyo
 
-from .base_model import BaseModel
+from .pyo_base_model import pyoBaseModel
 
 
-class M2(BaseModel):
+class pyoM2(pyoBaseModel):
     """Modelo M2 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(M2, self).__init__(*args, **kwargs)
+        super(pyoM2, self).__init__(*args, **kwargs)
 
         # VARIÁVEIS
         ## Erro no cálculo da distância
@@ -21,21 +21,19 @@ class M2(BaseModel):
             self.IJ,
             self.K,
             within=pyo.Reals,
-            bounds=(-self.max_gap, self.max_gap),
         )
         ## Valor absoluto no erro do cálculo da distância
         self.w = pyo.Var(
             self.IJ,
             self.K,
             within=pyo.NonNegativeReals,
-            bounds=(0, self.max_gap),
         )
         ## Distância k se ela é referente ao par de átomos i e j e 0 em caso contrátrio
         self.z = pyo.Var(
             self.IJ,
             self.K,
             within=pyo.NonNegativeReals,
-            bounds=(0, self.d_max),
+            # bounds=(0, self.d_max),
         )
 
         # RESTRIÇÕES

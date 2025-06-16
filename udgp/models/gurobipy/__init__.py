@@ -1,3 +1,7 @@
-from .gp_model_1 import M1gp
-from .gp_model_2 import M2gp
-from .gp_model_3 import M3gp
+from .gpy_model_1 import gpyM1
+from .gpy_model_2 import gpyM2
+
+_GPY_MODELS = {
+    "M1": gpyM1,
+    "M2": gpyM2,
+}

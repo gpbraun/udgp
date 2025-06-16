@@ -6,11 +6,11 @@ Este módulo implementa o modelo base para instâncias do problema uDGP usando a
 
 from itertools import combinations, product
 
-import gurobipy as gp
+import gurobipy as gpy
 import numpy as np
 
 
-class GPBaseModel(gp.Model):
+class gpyBaseModel(gpy.Model):
     """
     Modelo base para o uDGP.
     """
@@ -29,7 +29,7 @@ class GPBaseModel(gp.Model):
         previous_a: list | None = None,
         env=None,
     ):
-        super(GPBaseModel, self).__init__("uDGP", env)
+        super(gpyBaseModel, self).__init__("uDGP", env)
 
         # PARÂMETROS DA INSTÂNCIA
         self.ny = len(y_indices)
@@ -72,7 +72,7 @@ class GPBaseModel(gp.Model):
             self.a = self.addVars(
                 self.IJK,
                 name="a",
-                vtype=gp.GRB.CONTINUOUS,
+                vtype=gpy.GRB.CONTINUOUS,
                 lb=0,
                 ub=1,
             )
@@ -80,16 +80,16 @@ class GPBaseModel(gp.Model):
             self.a = self.addVars(
                 self.IJK,
                 name="a",
-                vtype=gp.GRB.BINARY,
+                vtype=gpy.GRB.BINARY,
             )
         ## Coordenadas do ponto i
         self.x = {
             i: self.addMVar(
                 3,
                 name=f"x[{i}]",
-                vtype=gp.GRB.CONTINUOUS,
-                lb=-gp.GRB.INFINITY,
-                ub=gp.GRB.INFINITY,
+                vtype=gpy.GRB.CONTINUOUS,
+                lb=-gpy.GRB.INFINITY,
+                ub=gpy.GRB.INFINITY,
             )
             for i in self.Ix
         }
@@ -98,9 +98,9 @@ class GPBaseModel(gp.Model):
             ij: self.addMVar(
                 3,
                 name=f"v[{ij}]",
-                vtype=gp.GRB.CONTINUOUS,
-                lb=-gp.GRB.INFINITY,
-                ub=gp.GRB.INFINITY,
+                vtype=gpy.GRB.CONTINUOUS,
+                lb=-gpy.GRB.INFINITY,
+                ub=gpy.GRB.INFINITY,
             )
             for ij in self.IJ
         }
@@ -108,7 +108,7 @@ class GPBaseModel(gp.Model):
         self.r = self.addVars(
             self.IJ,
             name="r",
-            vtype=gp.GRB.CONTINUOUS,
+            vtype=gpy.GRB.CONTINUOUS,
             lb=self.d_min,
             ub=self.d_max,
         )
@@ -127,7 +127,7 @@ class GPBaseModel(gp.Model):
         previous_a = previous_a if previous_a is not None else []
         for a_ijk_indices in previous_a:
             self.addConstr(
-                gp.quicksum(self.a[i, j, k] for i, j, k in a_ijk_indices)
+                gpy.quicksum(self.a[i, j, k] for i, j, k in a_ijk_indices)
                 <= len(a_ijk_indices) - 1
             )
 
@@ -135,9 +135,9 @@ class GPBaseModel(gp.Model):
 
     def __setattr__(self, *args):
         try:
-            return super(GPBaseModel, self).__setattr__(*args)
+            return super(gpyBaseModel, self).__setattr__(*args)
         except AttributeError:
-            return super(gp.Model, self).__setattr__(*args)
+            return super(gpy.Model, self).__setattr__(*args)
 
     def solution_points(self):
         """
@@ -163,10 +163,10 @@ class GPBaseModel(gp.Model):
         self.Params.OptimalityTol = self.max_tol
 
         # OTIMIZA
-        super(GPBaseModel, self).optimize()
+        super(gpyBaseModel, self).optimize()
         self.runtime = self.Runtime
 
-        if self.Status == gp.GRB.INFEASIBLE or self.SolCount == 0:
+        if self.Status == gpy.GRB.INFEASIBLE or self.SolCount == 0:
             # self.status == "infeasible"
             return False
 
