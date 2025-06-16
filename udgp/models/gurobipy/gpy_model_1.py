@@ -12,6 +12,8 @@ class gpyM1(gpyBaseModel):
 
     def __init__(self, *args, **kwargs):
         super(gpyM1, self).__init__(*args, **kwargs)
+        self.name = "M1"
+
         # VARIÁVEIS
         self.s = self.addVars(
             self.IJK,

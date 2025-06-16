@@ -12,6 +12,7 @@ class gpyM2(gpyBaseModel):
 
     def __init__(self, *args, **kwargs):
         super(gpyM2, self).__init__(*args, **kwargs)
+        self.name = "M2"
 
         # VARIÁVEIS
         ## Erro no cálculo da distância
@@ -19,8 +20,8 @@ class gpyM2(gpyBaseModel):
             self.IJK,
             name="p",
             vtype=gpy.GRB.CONTINUOUS,
-            lb=-self.max_gap,
-            ub=self.max_gap,
+            lb=-gpy.GRB.INFINITY,
+            ub=gpy.GRB.INFINITY,
         )
         ## Valor absoluto no erro do cálculo da distância
         self.w = self.addVars(
@@ -28,7 +29,7 @@ class gpyM2(gpyBaseModel):
             name="w",
             vtype=gpy.GRB.CONTINUOUS,
             lb=0,
-            ub=self.max_gap,
+            ub=gpy.GRB.INFINITY,
         )
         ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
         self.z = self.addVars(

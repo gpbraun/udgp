@@ -14,6 +14,7 @@ class pyoM2(pyoBaseModel):
 
     def __init__(self, *args, **kwargs):
         super(pyoM2, self).__init__(*args, **kwargs)
+        self.name = "M2"
 
         # VARIÁVEIS
         ## Erro no cálculo da distância

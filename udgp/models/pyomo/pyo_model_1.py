@@ -14,6 +14,7 @@ class pyoM1(pyoBaseModel):
 
     def __init__(self, *args, **kwargs):
         super(pyoM1, self).__init__(*args, **kwargs)
+        self.name = "M1"
 
         # VARIÁVEIS
         self.s = pyo.Var(

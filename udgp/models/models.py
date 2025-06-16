@@ -11,7 +11,7 @@ _BACKENDS = {
 }
 
 
-def get_model(model_name: str, *, backend: str = "pyomo"):
+def get_model(model_name: str, *, backend: str = "pyomo", **kwargs):
     """
     Return the *class* that implements ``tag`` on the selected *backend*.
     """
@@ -19,12 +19,12 @@ def get_model(model_name: str, *, backend: str = "pyomo"):
     backend_low = backend.lower()
 
     try:
-        registry = _BACKENDS[backend_low]
+        model_registry = _BACKENDS[backend_low]
     except KeyError as exc:  # unknown backend
         raise ValueError(f"Unknown backend: '{backend}'") from exc
 
     try:
-        return registry[model_name]
+        return model_registry[model_name](**kwargs)
     except KeyError as exc:  # unknown model tag
         raise ValueError(
             f"Unknown model '{model_name}' for backend '{backend}'"

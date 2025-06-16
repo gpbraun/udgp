@@ -7,6 +7,8 @@ Este módulo implementa o modelo base para instâncias do problema uDGP usando a
 import numpy as np
 import pyomo.environ as pyo
 
+from udgp.config import get_config
+
 
 class pyoBaseModel(pyo.ConcreteModel):
     """
@@ -15,25 +17,23 @@ class pyoBaseModel(pyo.ConcreteModel):
 
     def __init__(
         self,
+        *,
         x_indices: np.ndarray,
         y_indices: np.ndarray,
         dists: np.ndarray,
         freqs: np.ndarray,
         fixed_points: np.ndarray,
-        time_limit=1e4,
-        max_gap=1.0e-4,
-        max_tol=1.0e-6,
-        relaxed=False,
         previous_a: list | None = None,
+        relaxed=False,
     ):
         super(pyoBaseModel, self).__init__()
+        self.name = None
 
         # PARÂMETROS DA INSTÂNCIA
         self.nx = pyo.Param(initialize=len(x_indices))
         self.ny = pyo.Param(initialize=len(y_indices))
         self.m = pyo.Param(initialize=len(dists))
         self.runtime = 0
-        self.time_limit = time_limit
 
         # CONJUNTOS
         ## Conjunto I
@@ -130,7 +130,14 @@ class pyoBaseModel(pyo.ConcreteModel):
         """
         return np.array([[self.x[i, l].value for l in self.L] for i in self.Ix])
 
-    def solve(self, solver="gurobi", log=False):
+    def solve(
+        self,
+        solver="gurobi",
+        *,
+        log=False,
+        config: dict | None = None,
+        stage: str | None = None,
+    ) -> bool:
         """
         Otimiza o modelo e atualiza a instância.
 
@@ -138,17 +145,14 @@ class pyoBaseModel(pyo.ConcreteModel):
         """
         opt = pyo.SolverFactory(solver, solver_io="python")
 
-        # PARÂMETROS DO SOLVER
-        mip_gap = self.max_gap * len(self.IJ)
-        ## Gurobi
-        if "gurobi" in solver.lower():
-            opt.options["TimeLimit"] = self.time_limit
-            opt.options["NonConvex"] = 2
-            # opt.options["MIPGapAbs"] = mip_gap
-            # opt.options["IntFeasTol"] = self.max_tol
-            # opt.options["FeasibilityTol"] = self.max_tol
-            # opt.options["OptimalityTol"] = self.max_tol
-            # opt.options["SolutionLimit "] = 1
+        config = get_config(
+            solver=solver,
+            model=self.name,
+            stage=stage,
+            overrides=config,
+        )
+        for k, v in config.items():
+            opt.options[k] = v
 
         # OTIMIZA
         results = opt.solve(self, tee=log, report_timing=log)

@@ -182,25 +182,15 @@ class Instance:
 
         self.points = core_points
 
-    def solve_heuristic(self):
-        """
-        Usa uma heurística baseada no método TRIBOND para resolver a instância.
-        """
-        while not self.is_solved():
-            self.reset()
-            self.solve("M2", nx=4)
-            return
-
-    def solve_step(
+    def solve(
         self,
         model_name: str,
+        *,
         nx: int | None = None,
         ny: int | None = None,
         relaxed: bool = False,
-        time_limit=1e4,
-        max_gap=5e-3,
-        max_threshold=0.1,
         log=False,
+        config: dict = None,
         previous_a: list | None = None,
         backend="pyomo",
     ):
@@ -214,33 +204,40 @@ class Instance:
         y_indices = np.sort(rng.choice(self.fixed_n, ny, replace=False))
         x_indices = np.arange(self.fixed_n, nx + self.fixed_n)
 
-        model = get_model(model_name, backend=backend)
-
-        m = model(
-            x_indices,
-            y_indices,
-            self.dists,
-            self.freqs,
-            self.points,
-            time_limit=time_limit,
-            max_gap=max_gap,
+        model = get_model(
+            model_name,
+            backend=backend,
             relaxed=relaxed,
+            x_indices=x_indices,
+            y_indices=y_indices,
+            dists=self.dists,
+            freqs=self.freqs,
+            fixed_points=self.points,
             previous_a=previous_a,
         )
+        solved = model.solve(log=log, config=config)
 
-        solved = m.solve(log=log)
-
-        self.runtime += m.runtime
+        self.runtime += model.runtime
 
         if not solved:
             return False
 
         # ATUALIZA A INSTÂNCIA
-        new_points = m.solution_points()
-        if not self.add_points(new_points, max_threshold):
+        new_points = model.solution_points()
+        max_err = 1e-2
+        if not self.add_points(new_points, max_err):
             return False
         else:
             return True
+
+    def solve_heuristic(self):
+        """
+        Usa uma heurística baseada no método TRIBOND para resolver a instância.
+        """
+        while not self.is_solved():
+            self.reset()
+            self.solve("M2", nx=4)
+            return
 
     @classmethod
     def from_points(cls, points, freq=True):

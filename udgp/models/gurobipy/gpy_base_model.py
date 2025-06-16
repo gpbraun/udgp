@@ -9,6 +9,8 @@ from itertools import combinations, product
 import gurobipy as gpy
 import numpy as np
 
+from udgp.config import get_config
+
 
 class gpyBaseModel(gpy.Model):
     """
@@ -17,26 +19,24 @@ class gpyBaseModel(gpy.Model):
 
     def __init__(
         self,
+        *,
         x_indices: np.ndarray,
         y_indices: np.ndarray,
         dists: np.ndarray,
         freqs: np.ndarray,
         fixed_points: np.ndarray,
-        time_limit=1e4,
-        max_gap=1.0e-4,
-        max_tol=1.0e-6,
-        relaxed=False,
         previous_a: list | None = None,
+        relaxed=False,
         env=None,
     ):
         super(gpyBaseModel, self).__init__("uDGP", env)
+        self.name = None
 
         # PARÂMETROS DA INSTÂNCIA
         self.ny = len(y_indices)
         self.nx = len(x_indices)
         self.m = len(dists)
         self.runtime = 0
-        self.time_limit = time_limit
 
         # CONJUNTOS
         ## Conjunto I
@@ -55,11 +55,8 @@ class gpyBaseModel(gpy.Model):
         self.IJK = {(i, j, k) for (i, j), k in product(self.IJ, self.K)}
 
         # PARÂMETROS
-        self.max_gap = max_gap
-        self.max_tol = max_tol
-        self.max_err = self.max_gap + self.max_tol
-        self.d_min = dists.min() - self.max_err
-        self.d_max = dists.max() + self.max_err
+        self.d_min = dists.min()
+        self.d_max = dists.max()
 
         self.dists = dists
         self.freqs = freqs
@@ -145,22 +142,31 @@ class gpyBaseModel(gpy.Model):
         """
         return np.array([self.x[i].X for i in self.Ix])
 
-    def solve(self, log=False):
+    def solve(
+        self,
+        *,
+        log=False,
+        config: dict | None = None,
+        stage: str | None = None,
+    ) -> bool:
         """
         Otimiza o modelo e atualiza a instância.
 
         Retorna: verdadeiro se uma solução foi encontrada
         """
-        # PARÂMETROS DO SOLVER
-        mip_gap = self.max_gap * len(self.IJ)
-
         self.Params.LogToConsole = log
-        self.Params.TimeLimit = self.time_limit
-        self.Params.NonConvex = 2
-        self.Params.MIPGap = mip_gap
-        self.Params.IntFeasTol = self.max_tol
-        self.Params.FeasibilityTol = self.max_tol
-        self.Params.OptimalityTol = self.max_tol
+
+        config = get_config(
+            solver="gurobi",
+            model=self.name,
+            stage=stage,
+            overrides=config,
+        )
+        for k, v in config.items():
+            try:
+                self.setParam(k, v)
+            except:
+                print(f"[uDGP]  Warning: unknown Gurobi parameter '{k}'.")
 
         # OTIMIZA
         super(gpyBaseModel, self).optimize()

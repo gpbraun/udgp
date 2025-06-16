@@ -15,6 +15,7 @@ class pyoM3(pyoBaseModel):
 
     def __init__(self, *args, **kwargs):
         super(pyoM3, self).__init__(*args, **kwargs)
+        self.name = "M3"
 
         # 1) Variáveis adicionais (p, w, z), seguindo a ideia do model_3.py
         self.p = pyo.Var(
