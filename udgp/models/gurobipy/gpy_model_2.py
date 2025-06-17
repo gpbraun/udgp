@@ -35,35 +35,38 @@ class gpyM2(gpyBaseModel):
         self.z = self.addVars(
             self.IJK,
             name="z",
-            # vtype=gp.GRB.SEMICONT,
-            vtype=gpy.GRB.CONTINUOUS,
-            # lb=self.d_min,
+            vtype=gpy.GRB.SEMICONT,
+            lb=self.d_min,
             ub=self.d_max,
         )
 
         # RESTRIÇÕES
-        self.addConstrs(self.w[i, j, k] >= self.p[i, j, k] for i, j, k in self.IJK)
-        self.addConstrs(self.w[i, j, k] >= -self.p[i, j, k] for i, j, k in self.IJK)
-        self.addConstrs(
+        self.constr_x1 = self.addConstrs(
+            self.w[i, j, k] >= self.p[i, j, k] for i, j, k in self.IJK
+        )
+        self.constr_x2 = self.addConstrs(
+            self.w[i, j, k] >= -self.p[i, j, k] for i, j, k in self.IJK
+        )
+        self.constr_x3 = self.addConstrs(
             self.z[i, j, k] >= -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
             for i, j, k in self.IJK
         )
-        self.addConstrs(
+        self.constr_x4 = self.addConstrs(
             self.z[i, j, k] <= (1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
             for i, j, k in self.IJK
         )
-        self.addConstrs(
+        self.constr_x5 = self.addConstrs(
             self.z[i, j, k] >= -self.a[i, j, k] * self.d_max for i, j, k in self.IJK
         )
-        self.addConstrs(
+        self.constr_x6 = self.addConstrs(
             self.z[i, j, k] <= self.a[i, j, k] * self.d_max for i, j, k in self.IJK
         )
-        self.addConstrs(
+        self.constr_x7 = self.addConstrs(
             self.z[i, j, k]
             >= -(1 - self.a[i, j, k]) * self.d_max + self.dists[k] + self.p[i, j, k]
             for i, j, k in self.IJK
         )
-        self.addConstrs(
+        self.constr_x8 = self.addConstrs(
             self.z[i, j, k]
             <= (1 - self.a[i, j, k]) * self.d_max + self.dists[k] + self.p[i, j, k]
             for i, j, k in self.IJK
@@ -74,7 +77,6 @@ class gpyM2(gpyBaseModel):
             self.setObjective(
                 1
                 + self.w.sum()
-                + len(self.IJ)
                 - gpy.quicksum(
                     self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.IJK
                 ),

@@ -4,13 +4,13 @@ Gabriel Braun, 2025
 Este módulo implementa as configurações.
 """
 
-import configparser
 import importlib
 from pathlib import Path
 from typing import Any, Dict
 
-_CFG_PATH = importlib.resources.files("udgp.config").joinpath("default_config.cfg")
+import yaml
 
+_CFG_PATH = importlib.resources.files("udgp.config").joinpath("default_config.yaml")
 
 # Internal tables
 _CFG_SOLVER = {}
@@ -18,20 +18,11 @@ _CFG_SOLVER_MODEL = {}
 _CFG_SOLVER_MODEL_STAGE = {}
 
 
-def _cfg_read(path: Path) -> Dict[str, Dict[str, Any]]:
-    """
-    Returns:
-    """
-    cp = configparser.ConfigParser()
-    cp.read(path, encoding="utf-8")
-    return {sec.lower(): dict(cp.items(sec)) for sec in cp.sections()}
-
-
-def _cfg_register(sec: str, opts: Dict[str, Any]) -> None:
+def _cfg_register(section_name: str, opts: Dict[str, Any]) -> None:
     """
     Regiter
     """
-    parts = sec.split(".")
+    parts = section_name.split(".")
     if len(parts) == 1:
         solver = parts[0]
         _CFG_SOLVER.setdefault(solver, {}).update(opts)
@@ -42,19 +33,26 @@ def _cfg_register(sec: str, opts: Dict[str, Any]) -> None:
         solver, model, stage = parts
         _CFG_SOLVER_MODEL_STAGE.setdefault((solver, model, stage), {}).update(opts)
     else:
-        raise ValueError(f"Invalid section name [{sec}]")
+        raise ValueError(f"Invalid section name [{section_name}]")
 
 
-def set_config(cfg_file: str | Path) -> None:
+def _cfg_register_yaml(path: Path) -> None:
+    """
+    Returns:
+    """
+    cfg_data = yaml.safe_load(path.read_text())
+
+    for section, opts in cfg_data.items():
+        if not isinstance(opts, dict):
+            raise ValueError(f"{section}: expected mapping, got {type(opts)}")
+        _cfg_register(section, opts)
+
+
+def set_config(cfg_path: str | Path) -> None:
     """
     Merge sections from *cfg_file* into the in-memory tables.
     """
-    new_cfg = _cfg_read(Path(cfg_file))
-    if not new_cfg:
-        raise ValueError(f"{cfg_file} contained no sections")
-
-    for sec, opts in new_cfg.items():
-        _cfg_register(sec, opts)
+    _cfg_register_yaml(cfg_path)
 
 
 def get_config(
@@ -83,5 +81,4 @@ def get_config(
 
 
 # Bootstrap with built-in defaults
-for _sec, _opts in _cfg_read(_CFG_PATH).items():
-    _cfg_register(_sec, _opts)
+_cfg_register_yaml(_CFG_PATH)

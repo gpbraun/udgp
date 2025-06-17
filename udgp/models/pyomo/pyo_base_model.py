@@ -4,6 +4,8 @@ Gabriel Braun, 2023
 Este módulo implementa o modelo base para instâncias do problema uDGP usando a biblioteca pyomo.
 """
 
+from itertools import combinations
+
 import numpy as np
 import pyomo.environ as pyo
 
@@ -43,22 +45,15 @@ class pyoBaseModel(pyo.ConcreteModel):
 
         ## Conjunto IJ
         self.IJyx = pyo.Set(initialize=self.Iy * self.Ix)
-        self.IJxx = pyo.Set(
-            within=self.Ix * self.Ix,
-            initialize=((i, j) for i in self.Ix for j in self.Ix if i < j),
-        )
+        self.IJxx = pyo.Set(initialize=combinations(self.Ix, 2))
         self.IJ = self.IJyx | self.IJxx
 
         ## Conjunto K
         all_k = np.arange(self.m)
-        self.K = pyo.Set(initialize=[k for k in all_k if freqs[k] > 0])
+        self.K = pyo.Set(initialize=all_k[freqs != 0])
 
-        ## Conjunto L
+        ## Conjunto L (dimensão)
         self.L = pyo.Set(initialize=[0, 1, 2])
-
-        ## Conjunto A (soluções anteriores)
-        n_previous_a = len(previous_a) if previous_a else 0
-        self.A = pyo.Set(initialize=np.arange(n_previous_a))
 
         # PARÂMETROS
         self.d_min = pyo.Param(initialize=dists[freqs != 0].min())
@@ -117,6 +112,9 @@ class pyoBaseModel(pyo.ConcreteModel):
             return self.r[i, j] ** 2 == sum(self.v[i, j, l] ** 2 for l in self.L)
 
         # RESTRIÇÕES PARA SOLUÇÕES ANTERIORES
+        n_previous_a = len(previous_a) if previous_a else 0
+        self.A = pyo.Set(initialize=np.arange(n_previous_a))
+
         @self.Constraint(self.A)
         def constr_previous_a(self, n):
             return (
@@ -124,7 +122,13 @@ class pyoBaseModel(pyo.ConcreteModel):
                 <= len(previous_a[n]) - 1
             )
 
-    def solution_points(self):
+    def __setattr__(self, *args):
+        try:
+            return super(pyoBaseModel, self).__setattr__(*args)
+        except AttributeError:
+            return super(pyo.Model, self).__setattr__(*args)
+
+    def solution_points(self) -> np.ndarray:
         """
         Retorna (numpy.ndarray): pontos encontrados na solução do modelo.
         """

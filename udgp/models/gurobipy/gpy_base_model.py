@@ -51,7 +51,7 @@ class gpyBaseModel(gpy.Model):
 
         ## Conjunto K
         all_k = np.arange(self.m)
-        self.K = {k for k in all_k if freqs[k] > 0}
+        self.K = all_k[freqs != 0]
         self.IJK = {(i, j, k) for (i, j), k in product(self.IJ, self.K)}
 
         # PARÂMETROS
@@ -63,8 +63,8 @@ class gpyBaseModel(gpy.Model):
         self.y = {i: fixed_points[i] for i in y_indices}
 
         # VARIÁVEIS BASE
-        ## Decisão: distância k é referente ao par de átomos i e j
         self.relaxed = relaxed
+        ## Decisão: distância k é referente ao par de átomos i e j
         if self.relaxed:
             self.a = self.addVars(
                 self.IJK,
@@ -110,23 +110,29 @@ class gpyBaseModel(gpy.Model):
             ub=self.d_max,
         )
 
-        # RESTRIÇÕES
-        self.addConstrs(self.a.sum("*", "*", k) <= self.freqs[k] for k in self.K)
-        self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.IJ)
-        self.addConstrs(self.v[i, j] == self.x[i] - self.x[j] for i, j in self.IJxx)
-        self.addConstrs(self.v[i, j] == self.y[i] - self.x[j] for i, j in self.IJyx)
-
+        # RESTRIÇÕES BASE
+        self.constr_a1 = self.addConstrs(
+            self.a.sum("*", "*", k) <= self.freqs[k] for k in self.K
+        )
+        self.constr_a2 = self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.IJ)
+        self.constr_v_xx = self.addConstrs(
+            self.v[i, j] == self.x[i] - self.x[j] for i, j in self.IJxx
+        )
+        self.constr_v_yx = self.addConstrs(
+            self.v[i, j] == self.y[i] - self.x[j] for i, j in self.IJyx
+        )
         self.constr_r = self.addConstrs(
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
         )
 
         # RESTRIÇÕES PARA SOLUÇÕES ANTERIORES
         previous_a = previous_a if previous_a is not None else []
-        for a_ijk_indices in previous_a:
-            self.addConstr(
-                gpy.quicksum(self.a[i, j, k] for i, j, k in a_ijk_indices)
-                <= len(a_ijk_indices) - 1
-            )
+
+        self.addConstrs(
+            gpy.quicksum(self.a[i, j, k] for i, j, k in a_ijk_indices)
+            <= len(a_ijk_indices) - 1
+            for a_ijk_indices in previous_a
+        )
 
         self.update()
 
@@ -136,7 +142,7 @@ class gpyBaseModel(gpy.Model):
         except AttributeError:
             return super(gpy.Model, self).__setattr__(*args)
 
-    def solution_points(self):
+    def solution_points(self) -> np.ndarray:
         """
         Retorna (numpy.ndarray): pontos encontrados na solução do modelo.
         """
@@ -162,10 +168,13 @@ class gpyBaseModel(gpy.Model):
             stage=stage,
             overrides=config,
         )
+        print(config)
+
         for k, v in config.items():
             try:
                 self.setParam(k, v)
-            except:
+            except Exception as e:
+                print(e)
                 print(f"[uDGP]  Warning: unknown Gurobi parameter '{k}'.")
 
         # OTIMIZA
