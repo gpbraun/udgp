@@ -38,14 +38,14 @@ class gpyM1(gpyBaseModel):
         )
 
         # RESTRIÇÕES
-        self.constr_x1 = self.addConstrs(
+        self._constr_x1 = self.addConstrs(
             self.s[i, j, k] == self.r[i, j] * self.r[i, j] - self.dists[k] ** 2
             for i, j, k in self.IJK
         )
-        self.constr_x2 = self.addConstrs(
+        self._constr_x2 = self.addConstrs(
             self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k] for i, j, k in self.IJK
         )
-        self.constr_x3 = self.addConstrs(
+        self._constr_x3 = self.addConstrs(
             self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k] for i, j, k in self.IJK
         )
         # OBJETIVO

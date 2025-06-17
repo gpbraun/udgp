@@ -4,7 +4,7 @@ Gabriel Braun, 2023
 Este módulo implementa o modelo base para instâncias do problema uDGP usando a API gurobipy.
 """
 
-from itertools import combinations, product
+from itertools import chain, combinations, product
 
 import gurobipy as gpy
 import numpy as np
@@ -40,19 +40,19 @@ class gpyBaseModel(gpy.Model):
 
         # CONJUNTOS
         ## Conjunto I
-        self.Iy = set(y_indices)
-        self.Ix = set(x_indices)
-        self.I = self.Iy | self.Ix
+        self.Iy = y_indices
+        self.Ix = x_indices
+        self.I = list(chain(self.Iy, self.Ix))
 
         ## Conjunto IJ
-        self.IJyx = set(product(self.Iy, self.Ix))
-        self.IJxx = set(combinations(self.Ix, 2))
-        self.IJ = self.IJyx | self.IJxx
+        self.IJyx = list(product(self.Iy, self.Ix))
+        self.IJxx = list(combinations(self.Ix, 2))
+        self.IJ = list(chain(self.IJyx, self.IJxx))
 
         ## Conjunto K
-        all_k = np.arange(self.m)
-        self.K = all_k[freqs != 0]
-        self.IJK = {(i, j, k) for (i, j), k in product(self.IJ, self.K)}
+        all_k = list(range(self.m))
+        self.K = [k for k in all_k if freqs[k] != 0]
+        self.IJK = [(i, j, k) for (i, j), k in product(self.IJ, self.K)]
 
         # PARÂMETROS
         self.d_min = dists.min()
@@ -111,24 +111,26 @@ class gpyBaseModel(gpy.Model):
         )
 
         # RESTRIÇÕES BASE
-        self.constr_a1 = self.addConstrs(
+        self._constr_a1 = self.addConstrs(
             self.a.sum("*", "*", k) <= self.freqs[k] for k in self.K
         )
-        self.constr_a2 = self.addConstrs(self.a.sum(i, j, "*") == 1 for i, j in self.IJ)
-        self.constr_v_xx = self.addConstrs(
+        self._constr_a2 = self.addConstrs(
+            self.a.sum(i, j, "*") == 1 for i, j in self.IJ
+        )
+        self._constr_v_xx = self.addConstrs(
             self.v[i, j] == self.x[i] - self.x[j] for i, j in self.IJxx
         )
-        self.constr_v_yx = self.addConstrs(
+        self._constr_v_yx = self.addConstrs(
             self.v[i, j] == self.y[i] - self.x[j] for i, j in self.IJyx
         )
-        self.constr_r = self.addConstrs(
+        self._constr_r = self.addConstrs(
             self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
         )
 
         # RESTRIÇÕES PARA SOLUÇÕES ANTERIORES
         previous_a = previous_a if previous_a is not None else []
 
-        self.addConstrs(
+        self._constr_previous_a = self.addConstrs(
             gpy.quicksum(self.a[i, j, k] for i, j, k in a_ijk_indices)
             <= len(a_ijk_indices) - 1
             for a_ijk_indices in previous_a
@@ -168,7 +170,6 @@ class gpyBaseModel(gpy.Model):
             stage=stage,
             overrides=config,
         )
-        print(config)
 
         for k, v in config.items():
             try:

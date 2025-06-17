@@ -35,15 +35,15 @@ class pyoM1(pyoBaseModel):
 
         # RESTRIÇÕES
         @self.Constraint(self.IJ, self.K)
-        def constr_x1(self, i, j, k):
+        def _constr_x1(self, i, j, k):
             return self.s[i, j, k] == self.r[i, j] * self.r[i, j] - self.dists[k] ** 2
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x2(self, i, j, k):
+        def _constr_x2(self, i, j, k):
             return self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x3(self, i, j, k):
+        def _constr_x3(self, i, j, k):
             return self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k]
 
         # OBJETIVO

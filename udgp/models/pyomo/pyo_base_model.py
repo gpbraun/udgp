@@ -92,23 +92,23 @@ class pyoBaseModel(pyo.ConcreteModel):
 
         # RESTRIÇÕES BASE
         @self.Constraint(self.K)
-        def constr_a1(self, k):
+        def _constr_a1(self, k):
             return sum(self.a[i, j, k] for i, j in self.IJ) <= self.freqs[k]
 
         @self.Constraint(self.IJ)
-        def constr_a2(self, i, j):
+        def _constr_a2(self, i, j):
             return sum(self.a[i, j, k] for k in self.K) == 1
 
         @self.Constraint(self.IJxx, self.L)
-        def constr_v_xx(self, i, j, l):
+        def _constr_v_xx(self, i, j, l):
             return self.v[i, j, l] == self.x[j, l] - self.x[i, l]
 
         @self.Constraint(self.IJyx, self.L)
-        def constr_v_yx(self, i, j, l):
+        def _constr_v_yx(self, i, j, l):
             return self.v[i, j, l] == self.y[i, l] - self.x[j, l]
 
         @self.Constraint(self.IJ)
-        def constr_r(self, i, j):
+        def _constr_r(self, i, j):
             return self.r[i, j] ** 2 == sum(self.v[i, j, l] ** 2 for l in self.L)
 
         # RESTRIÇÕES PARA SOLUÇÕES ANTERIORES
@@ -116,7 +116,7 @@ class pyoBaseModel(pyo.ConcreteModel):
         self.A = pyo.Set(initialize=np.arange(n_previous_a))
 
         @self.Constraint(self.A)
-        def constr_previous_a(self, n):
+        def _constr_previous_a(self, n):
             return (
                 sum(self.a[i, j, k] for i, j, k in previous_a[n])
                 <= len(previous_a[n]) - 1

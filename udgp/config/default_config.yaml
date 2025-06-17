@@ -1,3 +1,8 @@
 gurobi:
   NonConvex: 2
-  MIPGap: 1.0e-4
+  MIPGap: 1.0e-2
+  Heuristics: 0.50
+  Cuts: 1
+  Presolve: 2
+  ScaleFlag: 2
+  NumericFocus: 1

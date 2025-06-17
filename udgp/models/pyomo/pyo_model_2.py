@@ -39,37 +39,37 @@ class pyoM2(pyoBaseModel):
 
         # RESTRIÇÕES
         @self.Constraint(self.IJ, self.K)
-        def constr_x1(self, i, j, k):
+        def _constr_x1(self, i, j, k):
             return self.w[i, j, k] >= self.p[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x2(self, i, j, k):
+        def _constr_x2(self, i, j, k):
             return self.w[i, j, k] >= -self.p[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x3(self, i, j, k):
+        def _constr_x3(self, i, j, k):
             return self.z[i, j, k] >= self.r[i, j] - self.d_max * (1 - self.a[i, j, k])
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x4(self, i, j, k):
+        def _constr_x4(self, i, j, k):
             return self.z[i, j, k] <= self.r[i, j] + self.d_max * (1 - self.a[i, j, k])
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x5(self, i, j, k):
+        def _constr_x5(self, i, j, k):
             return self.z[i, j, k] >= -self.d_max * self.a[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x6(self, i, j, k):
+        def _constr_x6(self, i, j, k):
             return self.z[i, j, k] <= self.d_max * self.a[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x7(self, i, j, k):
+        def _constr_x7(self, i, j, k):
             return self.z[i, j, k] >= self.dists[k] + self.p[i, j, k] - self.d_max * (
                 1 - self.a[i, j, k]
             )
 
         @self.Constraint(self.IJ, self.K)
-        def constr_x8(self, i, j, k):
+        def _constr_x8(self, i, j, k):
             return self.z[i, j, k] <= self.dists[k] + self.p[i, j, k] + self.d_max * (
                 1 - self.a[i, j, k]
             )
