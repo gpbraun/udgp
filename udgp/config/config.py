@@ -4,13 +4,13 @@ Gabriel Braun, 2025
 Este módulo implementa as configurações.
 """
 
-import importlib
+from importlib import resources
 from pathlib import Path
 from typing import Any, Dict
 
 import yaml
 
-_CFG_PATH = importlib.resources.files("udgp.config").joinpath("default_config.yaml")
+_CFG_DEFAULTS_PATH = resources.files("udgp.config").joinpath("default_config.yaml")
 
 # Internal tables
 _CFG_SOLVER = {}
@@ -81,4 +81,4 @@ def get_config(
 
 
 # Bootstrap with built-in defaults
-_cfg_register_yaml(_CFG_PATH)
+_cfg_register_yaml(_CFG_DEFAULTS_PATH)
