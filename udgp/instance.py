@@ -261,7 +261,7 @@ class Instance:
     @classmethod
     def artificial_molecule(cls, n: int, seed: int = None, freq=True):
         """
-        Retorna (Instance): instância de molécula artificial com n átomos.
+        Retorna (Instance): instância de molécula artificial com `n` átomos.
 
         Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
         """

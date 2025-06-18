@@ -1,9 +1,9 @@
-from udgp import Instance, set_logger
+import udgp
 
-set_logger("INFO", log_to_console=False, log_file="test/teste.log")
+udgp.set_logger("INFO", log_to_console=False, log_file="test/teste.log")
 
 N = 5
-instance = Instance.artificial_molecule(
+instance = udgp.Instance.artificial_molecule(
     N,
     freq=True,
     seed=123456,

@@ -36,6 +36,7 @@ class gpM2(gpBaseModel):
             self.IJK,
             name="z",
             vtype=gp.GRB.CONTINUOUS,
+            lb=0,
             ub=self.d_max,
         )
 

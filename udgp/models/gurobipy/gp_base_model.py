@@ -54,8 +54,7 @@ class gpBaseModel(gp.Model):
         self.IJ = list(chain(self.IJyx, self.IJxx))
 
         ## Conjunto K
-        all_k = list(range(self.m))
-        self.K = [k for k in all_k if freqs[k] != 0]
+        self.K = [k for k in range(self.m) if freqs[k] != 0]
         self.IJK = [(i, j, k) for (i, j), k in product(self.IJ, self.K)]
 
         # PARÂMETROS

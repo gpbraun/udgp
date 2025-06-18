@@ -52,8 +52,7 @@ class poBaseModel(po.ConcreteModel):
         self.IJ = self.IJyx | self.IJxx
 
         ## Conjunto K
-        all_k = np.arange(self.m)
-        self.K = po.Set(initialize=all_k[freqs != 0])
+        self.K = po.Set(initialize=np.arange(self.m)[freqs != 0])
 
         ## Conjunto L (dimensão)
         self.L = po.Set(initialize=[0, 1, 2])

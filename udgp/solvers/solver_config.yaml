@@ -1,6 +1,5 @@
 gurobi:
   LogToConsole: 0
-  LogFile: ""
   NonConvex: 2
   MIPGap: 1.0e-2
   Heuristics: 0.50
