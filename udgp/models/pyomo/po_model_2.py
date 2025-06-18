@@ -4,36 +4,36 @@ Gabriel Braun, 2023
 Este módulo implementa o modelo M2 para instâncias do problema uDGP.
 """
 
-import pyomo.environ as pyo
+import pyomo.environ as po
 
-from .pyo_base_model import pyoBaseModel
+from .po_base_model import poBaseModel
 
 
-class pyoM2(pyoBaseModel):
+class poM2(poBaseModel):
     """Modelo M2 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(pyoM2, self).__init__(*args, **kwargs)
+        super(poM2, self).__init__(*args, **kwargs)
         self.name = "M2"
 
         # VARIÁVEIS
         ## Erro no cálculo da distância
-        self.p = pyo.Var(
+        self.p = po.Var(
             self.IJ,
             self.K,
-            within=pyo.Reals,
+            within=po.Reals,
         )
         ## Valor absoluto no erro do cálculo da distância
-        self.w = pyo.Var(
+        self.w = po.Var(
             self.IJ,
             self.K,
-            within=pyo.NonNegativeReals,
+            within=po.NonNegativeReals,
         )
         ## Distância k se ela é referente ao par de átomos i e j e 0 em caso contrátrio
-        self.z = pyo.Var(
+        self.z = po.Var(
             self.IJ,
             self.K,
-            within=pyo.NonNegativeReals,
+            within=po.NonNegativeReals,
             # bounds=(0, self.d_max),
         )
 
@@ -76,12 +76,12 @@ class pyoM2(pyoBaseModel):
 
         # OBJETIVO
         def relaxed_objective(model):
-            return 1 + pyo.summation(model.w) - pyo.summation(model.a)
+            return 1 + po.summation(model.w) - po.summation(model.a)
 
         def objective(model):
-            return 1 + pyo.summation(model.w)
+            return 1 + po.summation(model.w)
 
-        self.obj = pyo.Objective(
-            sense=pyo.minimize,
+        self.obj = po.Objective(
+            sense=po.minimize,
             rule=relaxed_objective if self.relaxed else objective,
         )

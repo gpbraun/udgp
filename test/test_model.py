@@ -1,4 +1,6 @@
-from udgp import Instance
+from udgp import Instance, set_logger
+
+set_logger("INFO", log_to_console=False, log_file="test/teste.log")
 
 N = 5
 instance = Instance.artificial_molecule(
@@ -7,6 +9,4 @@ instance = Instance.artificial_molecule(
     seed=123456,
 )
 
-instance.solve("M2", log=True, backend="gurobipy")
-
-print(instance.runtime)
+instance.solve("M2", backend="gurobipy")

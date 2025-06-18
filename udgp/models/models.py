@@ -2,12 +2,12 @@
 Central registry for uDGP model classes.
 """
 
-from .gurobipy import _GPY_MODELS
-from .pyomo import _PYO_MODELS
+from .gurobipy import _GP_MODELS
+from .pyomo import _PO_MODELS
 
 _BACKENDS = {
-    "pyomo": _PYO_MODELS,
-    "gurobipy": _GPY_MODELS,
+    "pyomo": _PO_MODELS,
+    "gurobipy": _GP_MODELS,
 }
 
 

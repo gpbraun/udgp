@@ -1,9 +1,9 @@
-from .pyo_model_1 import pyoM1
-from .pyo_model_2 import pyoM2
-from .pyo_model_3 import pyoM3
+from .po_model_1 import poM1
+from .po_model_2 import poM2
+from .po_model_3 import poM3
 
-_PYO_MODELS = {
-    "M1": pyoM1,
-    "M2": pyoM2,
-    "M3": pyoM3,
+_PO_MODELS = {
+    "M1": poM1,
+    "M2": poM2,
+    "M3": poM3,
 }

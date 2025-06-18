@@ -1,10 +1,10 @@
 import numpy as np
-import pyomo.environ as pyo
+import pyomo.environ as po
 
-from .pyo_base_model import pyoBaseModel
+from .po_base_model import poBaseModel
 
 
-class pyoM3(pyoBaseModel):
+class poM3(poBaseModel):
     """
     Modelo M3 'do zero', com:
       - Primeira resolução do problema não convexo (f_expr - g_expr),
@@ -14,18 +14,18 @@ class pyoM3(pyoBaseModel):
     """
 
     def __init__(self, *args, **kwargs):
-        super(pyoM3, self).__init__(*args, **kwargs)
+        super(poM3, self).__init__(*args, **kwargs)
         self.name = "M3"
 
         # 1) Variáveis adicionais (p, w, z), seguindo a ideia do model_3.py
-        self.p = pyo.Var(
-            self.IJ, self.K, within=pyo.Reals, bounds=(-self.max_gap, self.max_gap)
+        self.p = po.Var(
+            self.IJ, self.K, within=po.Reals, bounds=(-self.max_gap, self.max_gap)
         )
-        self.w = pyo.Var(
-            self.IJ, self.K, within=pyo.NonNegativeReals, bounds=(0, self.max_gap)
+        self.w = po.Var(
+            self.IJ, self.K, within=po.NonNegativeReals, bounds=(0, self.max_gap)
         )
-        self.z = pyo.Var(
-            self.IJ, self.K, within=pyo.NonNegativeReals, bounds=(0, self.d_max)
+        self.z = po.Var(
+            self.IJ, self.K, within=po.NonNegativeReals, bounds=(0, self.d_max)
         )
 
         # 2) Ajustar restrição r[i,j]^2 >= sum(v[i,j,l]^2)
@@ -82,13 +82,13 @@ class pyoM3(pyoBaseModel):
                 + sum(m.r[i, j] ** 2 for i, j in m.IJ)
             )
 
-        self.f_expr = pyo.Expression(rule=_f_rule)
+        self.f_expr = po.Expression(rule=_f_rule)
 
         def _g_rule(m):
             # g(X) = Σ(v^2)
             return sum(m.v[i, j, l] ** 2 for i, j in m.IJ for l in m.L)
 
-        self.g_expr = pyo.Expression(rule=_g_rule)
+        self.g_expr = po.Expression(rule=_g_rule)
 
         # Removemos qualquer objeto "obj" se existir (para segurança)
         if hasattr(self, "obj"):
@@ -103,7 +103,7 @@ class pyoM3(pyoBaseModel):
 
         Retorna True se não houve inviabilidade; False caso contrário.
         """
-        opt = pyo.SolverFactory(solver, solver_io="python")
+        opt = po.SolverFactory(solver, solver_io="python")
         if solver.lower().startswith("gurobi"):
             opt.options["TimeLimit"] = self.time_limit
 
@@ -121,11 +121,11 @@ class pyoM3(pyoBaseModel):
         opt.options["SolutionLimit"] = 20
 
         # 2) Criar e anexar a objective
-        self.obj = pyo.Objective(expr=self.f_expr - self.g_expr, sense=pyo.minimize)
+        self.obj = po.Objective(expr=self.f_expr - self.g_expr, sense=po.minimize)
 
         # 3) Resolver
         results = opt.solve(self, tee=log)
-        if results.solver.termination_condition == pyo.TerminationCondition.infeasible:
+        if results.solver.termination_condition == po.TerminationCondition.infeasible:
             print("[M3] ERRO: primeira fase inviável.")
             return False
 
@@ -165,13 +165,13 @@ class pyoM3(pyoBaseModel):
                     linear_part += grad_val * m.v[i, j, l]
                 return m.f_expr + linear_part
 
-            self.obj = pyo.Objective(rule=dca_objective_rule, sense=pyo.minimize)
+            self.obj = po.Objective(rule=dca_objective_rule, sense=po.minimize)
 
             # (3) Resolve
             results = opt.solve(self, tee=log, warmstart=True)
             if (
                 results.solver.termination_condition
-                == pyo.TerminationCondition.infeasible
+                == po.TerminationCondition.infeasible
             ):
                 print(f"[DCA] it={it}: inviável.")
                 return False

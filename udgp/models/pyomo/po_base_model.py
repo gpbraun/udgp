@@ -4,15 +4,18 @@ Gabriel Braun, 2023
 Este módulo implementa o modelo base para instâncias do problema uDGP usando a biblioteca pyomo.
 """
 
+import logging
 from itertools import combinations
 
 import numpy as np
-import pyomo.environ as pyo
+import pyomo.environ as po
 
-from udgp.config import get_config
+from udgp.solvers import get_config
+
+logger = logging.getLogger(__name__)
 
 
-class pyoBaseModel(pyo.ConcreteModel):
+class poBaseModel(po.ConcreteModel):
     """
     Modelo base para o uDGP.
     """
@@ -28,51 +31,51 @@ class pyoBaseModel(pyo.ConcreteModel):
         previous_a: list | None = None,
         relaxed=False,
     ):
-        super(pyoBaseModel, self).__init__()
-        self.name = None
+        super(poBaseModel, self).__init__()
+        self.name = "Base"
 
         # PARÂMETROS DA INSTÂNCIA
-        self.nx = pyo.Param(initialize=len(x_indices))
-        self.ny = pyo.Param(initialize=len(y_indices))
-        self.m = pyo.Param(initialize=len(dists))
+        self.nx = po.Param(initialize=len(x_indices))
+        self.ny = po.Param(initialize=len(y_indices))
+        self.m = po.Param(initialize=len(dists))
         self.runtime = 0
 
         # CONJUNTOS
         ## Conjunto I
-        self.Iy = pyo.Set(initialize=y_indices)
-        self.Ix = pyo.Set(initialize=x_indices)
+        self.Iy = po.Set(initialize=y_indices)
+        self.Ix = po.Set(initialize=x_indices)
         self.I = self.Iy | self.Ix
 
         ## Conjunto IJ
-        self.IJyx = pyo.Set(initialize=self.Iy * self.Ix)
-        self.IJxx = pyo.Set(initialize=combinations(self.Ix, 2))
+        self.IJyx = self.Iy * self.Ix
+        self.IJxx = po.Set(initialize=combinations(self.Ix, 2))
         self.IJ = self.IJyx | self.IJxx
 
         ## Conjunto K
         all_k = np.arange(self.m)
-        self.K = pyo.Set(initialize=all_k[freqs != 0])
+        self.K = po.Set(initialize=all_k[freqs != 0])
 
         ## Conjunto L (dimensão)
-        self.L = pyo.Set(initialize=[0, 1, 2])
+        self.L = po.Set(initialize=[0, 1, 2])
 
         # PARÂMETROS
-        self.d_min = pyo.Param(initialize=dists[freqs != 0].min())
-        self.d_max = pyo.Param(initialize=dists[freqs != 0].max())
+        self.d_min = po.Param(initialize=dists[freqs != 0].min())
+        self.d_max = po.Param(initialize=dists[freqs != 0].max())
 
-        self.dists = pyo.Param(
+        self.dists = po.Param(
             self.K,
-            within=pyo.PositiveReals,
+            within=po.PositiveReals,
             initialize={k: dists[k] for k in self.K},
         )
-        self.freqs = pyo.Param(
+        self.freqs = po.Param(
             self.K,
-            within=pyo.NonNegativeIntegers,
+            within=po.NonNegativeIntegers,
             initialize={k: freqs[k] for k in self.K},
         )
-        self.y = pyo.Param(
+        self.y = po.Param(
             self.Iy,
             self.L,
-            within=pyo.Reals,
+            within=po.Reals,
             initialize={(i, l): fixed_points[i, l] for i in self.Iy for l in self.L},
         )
 
@@ -80,15 +83,15 @@ class pyoBaseModel(pyo.ConcreteModel):
         self.relaxed = relaxed
         ## Decisão: distância k é referente ao par de átomos i e j
         if relaxed:
-            self.a = pyo.Var(self.IJ, self.K, within=pyo.UnitInterval)
+            self.a = po.Var(self.IJ, self.K, within=po.UnitInterval)
         else:
-            self.a = pyo.Var(self.IJ, self.K, within=pyo.Binary)
+            self.a = po.Var(self.IJ, self.K, within=po.Binary)
         ## Coordenadas do ponto i
-        self.x = pyo.Var(self.Ix, self.L, within=pyo.Reals)
+        self.x = po.Var(self.Ix, self.L, within=po.Reals)
         ## Vetor distância entre os átomos i e j
-        self.v = pyo.Var(self.IJ, self.L, within=pyo.Reals)
+        self.v = po.Var(self.IJ, self.L, within=po.Reals)
         ## Distância entre os átomos i e j (norma de v)
-        self.r = pyo.Var(self.IJ, within=pyo.Reals, bounds=(self.d_min, self.d_max))
+        self.r = po.Var(self.IJ, within=po.Reals, bounds=(self.d_min, self.d_max))
 
         # RESTRIÇÕES BASE
         @self.Constraint(self.K)
@@ -113,7 +116,7 @@ class pyoBaseModel(pyo.ConcreteModel):
 
         # RESTRIÇÕES PARA SOLUÇÕES ANTERIORES
         n_previous_a = len(previous_a) if previous_a else 0
-        self.A = pyo.Set(initialize=np.arange(n_previous_a))
+        self.A = po.Set(initialize=np.arange(n_previous_a))
 
         @self.Constraint(self.A)
         def _constr_previous_a(self, n):
@@ -124,9 +127,9 @@ class pyoBaseModel(pyo.ConcreteModel):
 
     def __setattr__(self, *args):
         try:
-            return super(pyoBaseModel, self).__setattr__(*args)
+            return super(poBaseModel, self).__setattr__(*args)
         except AttributeError:
-            return super(pyo.Model, self).__setattr__(*args)
+            return super(po.Model, self).__setattr__(*args)
 
     def solution_points(self) -> np.ndarray:
         """
@@ -138,7 +141,6 @@ class pyoBaseModel(pyo.ConcreteModel):
         self,
         solver="gurobi",
         *,
-        log=False,
         config: dict | None = None,
         stage: str | None = None,
     ) -> bool:
@@ -147,8 +149,7 @@ class pyoBaseModel(pyo.ConcreteModel):
 
         Retorna (bool): verdadeiro se uma solução foi encontrada
         """
-        opt = pyo.SolverFactory(solver, solver_io="python")
-
+        opt = po.SolverFactory(solver, solver_io="direct")
         config = get_config(
             solver=solver,
             model=self.name,
@@ -157,10 +158,12 @@ class pyoBaseModel(pyo.ConcreteModel):
         )
         for k, v in config.items():
             opt.options[k] = v
-
         # OTIMIZA
-        results = opt.solve(self, tee=log, report_timing=log)
-        self.runtime = opt._solver_model.getAttr("Runtime")
+        results = opt.solve(self, tee=logger)
+
+        if solver == "gurobi":
+            self.work = opt._solver_model.getAttr("Work")
+            self.runtime = opt._solver_model.getAttr("Runtime")
 
         if results.solver.termination_condition == "infeasible":
             # self.status == "infeasible"

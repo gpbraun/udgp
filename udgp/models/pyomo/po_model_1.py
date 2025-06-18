@@ -4,33 +4,33 @@ Gabriel Braun, 2023
 Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
-import pyomo.environ as pyo
+import pyomo.environ as po
 
-from .pyo_base_model import pyoBaseModel
+from .po_base_model import poBaseModel
 
 
-class pyoM1(pyoBaseModel):
+class poM1(poBaseModel):
     """Modelo M1 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(pyoM1, self).__init__(*args, **kwargs)
+        super(poM1, self).__init__(*args, **kwargs)
         self.name = "M1"
 
         # VARIÁVEIS
-        self.s = pyo.Var(
+        self.s = po.Var(
             self.IJ,
             self.K,
-            within=pyo.Reals,
+            within=po.Reals,
         )
-        self.t = pyo.Var(
+        self.t = po.Var(
             self.IJ,
             self.K,
-            within=pyo.Reals,
+            within=po.Reals,
         )
-        self.u = pyo.Var(
+        self.u = po.Var(
             self.IJ,
             self.K,
-            within=pyo.Reals,
+            within=po.Reals,
         )
 
         # RESTRIÇÕES
@@ -51,14 +51,14 @@ class pyoM1(pyoBaseModel):
             return (
                 1
                 + len(model.IJ)
-                + pyo.summation(model.u)
+                + po.summation(model.u)
                 - sum(model.a[i, j, k] ** 2 for i, j, k in model.IJ * model.K)
             )
 
         def objective(model):
-            return 1 + pyo.summation(model.u)
+            return 1 + po.summation(model.u)
 
-        self.obj = pyo.Objective(
-            sense=pyo.minimize,
+        self.obj = po.Objective(
+            sense=po.minimize,
             rule=relaxed_objective if self.relaxed else objective,
         )

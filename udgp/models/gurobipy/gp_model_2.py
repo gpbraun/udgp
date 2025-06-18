@@ -2,16 +2,16 @@
 Este módulo implementa o modelo M1 para instâncias do problema uDGP.
 """
 
-import gurobipy as gpy
+import gurobipy as gp
 
-from .gpy_base_model import gpyBaseModel
+from .gp_base_model import gpBaseModel
 
 
-class gpyM2(gpyBaseModel):
+class gpM2(gpBaseModel):
     """Modelo M2 para o uDGP."""
 
     def __init__(self, *args, **kwargs):
-        super(gpyM2, self).__init__(*args, **kwargs)
+        super(gpM2, self).__init__(*args, **kwargs)
         self.name = "M2"
 
         # VARIÁVEIS
@@ -19,23 +19,23 @@ class gpyM2(gpyBaseModel):
         self.p = self.addVars(
             self.IJK,
             name="p",
-            vtype=gpy.GRB.CONTINUOUS,
-            lb=-gpy.GRB.INFINITY,
-            ub=gpy.GRB.INFINITY,
+            vtype=gp.GRB.CONTINUOUS,
+            lb=-gp.GRB.INFINITY,
+            ub=gp.GRB.INFINITY,
         )
         ## Valor absoluto no erro do cálculo da distância
         self.w = self.addVars(
             self.IJK,
             name="w",
-            vtype=gpy.GRB.CONTINUOUS,
+            vtype=gp.GRB.CONTINUOUS,
             lb=0,
-            ub=gpy.GRB.INFINITY,
+            ub=gp.GRB.INFINITY,
         )
         ## Distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
         self.z = self.addVars(
             self.IJK,
             name="z",
-            vtype=gpy.GRB.CONTINUOUS,
+            vtype=gp.GRB.CONTINUOUS,
             ub=self.d_max,
         )
 
@@ -76,10 +76,10 @@ class gpyM2(gpyBaseModel):
             self.setObjective(
                 1
                 + self.w.sum()
-                - gpy.quicksum(
+                - gp.quicksum(
                     self.a[i, j, k] * self.a[i, j, k] for i, j, k in self.IJK
                 ),
-                gpy.GRB.MINIMIZE,
+                gp.GRB.MINIMIZE,
             )
         else:
-            self.setObjective(1 + self.w.sum(), gpy.GRB.MINIMIZE)
+            self.setObjective(1 + self.w.sum(), gp.GRB.MINIMIZE)

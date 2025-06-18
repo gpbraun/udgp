@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 import yaml
 
-_CFG_DEFAULTS_PATH = resources.files("udgp.config").joinpath("default_config.yaml")
+_CFG_DEFAULTS_PATH = resources.files("udgp.solvers").joinpath("solver_config.yaml")
 
 # Internal tables
 _CFG_SOLVER = {}

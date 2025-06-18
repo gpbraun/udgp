@@ -3,11 +3,15 @@
 Este módulo implementa a classe base para instâncias do problema uDGP.
 """
 
+import logging
+
 import numpy as np
 
 from udgp.instances import *
 from udgp.models import get_model
 from udgp.utils import *
+
+logger = logging.getLogger(__name__)
 
 
 class Instance:
@@ -34,6 +38,7 @@ class Instance:
         self.a_indices = np.empty((0, 3), dtype=np.int16)
         self.status = "ok"
         self.runtime = 0.0
+        self.work = 0.0
 
         self.input_freqs = freqs
         self.input_points = points
@@ -111,6 +116,7 @@ class Instance:
         self.a_indices = np.empty((0, 3), dtype=np.int16)
         if reset_runtime:
             self.runtime = 0.0
+            self.work = 0.0
 
     def remove_dists(self, dists: np.ndarray, indices: np.ndarray, threshold=0.1):
         """
@@ -189,7 +195,6 @@ class Instance:
         nx: int | None = None,
         ny: int | None = None,
         relaxed: bool = False,
-        log=False,
         config: dict = None,
         previous_a: list | None = None,
         backend="pyomo",
@@ -215,9 +220,10 @@ class Instance:
             fixed_points=self.points,
             previous_a=previous_a,
         )
-        solved = model.solve(log=log, config=config)
+        solved = model.solve(config=config)
 
         self.runtime += model.runtime
+        self.work += model.work
 
         if not solved:
             return False
