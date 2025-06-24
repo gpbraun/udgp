@@ -117,35 +117,6 @@ class gpBaseModel(gp.Model):
         self._objective = expr
         self.setObjective(expr, gp.GRB.MINIMIZE)
 
-    def set_solver_params(
-        self,
-        *,
-        stage: str | None = None,
-        overrides: dict[str, Any] | None = None,
-    ):
-        """
-        Sets: solver-specific params.
-        """
-        self.resetParams()
-
-        params = get_solver_params(
-            solver="gurobi",
-            model=self.NAME,
-            stage=stage,
-        )
-        if overrides is not None:
-            params.update(overrides)
-
-        self.Params.OutputFlag = 0
-
-        for k, v in params.items():
-            try:
-                self.setParam(k, v)
-            except Exception:
-                logger.warning(f"Error setting Gurobi param: {k} = {v}.")
-
-        self.Params.OutputFlag = 1
-
     def set_model_params(
         self,
         overrides: dict[str, Any] | None = None,
@@ -242,6 +213,35 @@ class gpBaseModel(gp.Model):
         self.objective += -lbd * (
             gp.quicksum(a**2 for a in self.a.values()) - len(self.IJ)
         )
+
+    def set_solver_params(
+        self,
+        *,
+        stage: str | None = None,
+        overrides: dict[str, Any] | None = None,
+    ):
+        """
+        Sets: solver-specific params.
+        """
+        self.resetParams()
+
+        params = get_solver_params(
+            solver="gurobi",
+            model=self.NAME,
+            stage=stage,
+        )
+        if overrides is not None:
+            params.update(overrides)
+
+        self.Params.OutputFlag = 0
+
+        for k, v in params.items():
+            try:
+                self.setParam(k, v)
+            except Exception:
+                logger.warning(f"Error setting Gurobi param: {k} = {v}.")
+
+        self.Params.OutputFlag = 1
 
     def solve(
         self,
