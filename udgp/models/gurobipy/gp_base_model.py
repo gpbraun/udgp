@@ -214,7 +214,7 @@ class gpBaseModel(gp.Model):
             len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
         )
 
-    def set_solver_params(
+    def _set_solver_params(
         self,
         *,
         stage: str | None = None,
@@ -254,7 +254,7 @@ class gpBaseModel(gp.Model):
 
         Retorna: verdadeiro se uma solução foi encontrada
         """
-        self.set_solver_params(stage=stage, overrides=solver_params)
+        self._set_solver_params(stage=stage, overrides=solver_params)
         self.optimize()
 
         if self.SolCount == 0:

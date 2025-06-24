@@ -77,7 +77,7 @@ class gpM3(gpM2):
         )
 
         # ---------- parâmetros DCA -----------------------------------
-        self.set_solver_params(stage="dca_iter", overrides=solver_params)
+        self._set_solver_params(stage="dca_iter", overrides=solver_params)
 
         max_iter = self.model_params["MaxIter"]
         tol = self.model_params["DCATol"]

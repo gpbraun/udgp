@@ -205,7 +205,7 @@ class poBaseModel(po.ConcreteModel):
             len(self.IJ) - sum(self.a[ijk] ** 2 for ijk in self.IJK)
         )
 
-    def get_solver(
+    def _get_solver(
         self,
         solver: str,
         *,
@@ -242,7 +242,7 @@ class poBaseModel(po.ConcreteModel):
 
         Retorna (bool): verdadeiro se uma solução foi encontrada
         """
-        opt = self.get_solver(solver, stage=stage, overrides=solver_params)
+        opt = self._get_solver(solver, stage=stage, overrides=solver_params)
         results = opt.solve(self, tee=logger)
 
         if solver == "gurobi":
