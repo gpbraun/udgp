@@ -13,7 +13,7 @@ import pyomo.environ as po
 
 from udgp.solvers import get_solver_params
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uDGP")
 
 
 class poBaseModel(po.ConcreteModel):
@@ -31,13 +31,29 @@ class poBaseModel(po.ConcreteModel):
         Add the variables to the models.
         """
         ## Decisão: distância k é referente ao par de átomos i e j
-        self.a = po.Var(self.IJ, self.K, within=po.Binary)
+        self.a = po.Var(
+            self.IJ,
+            self.K,
+            within=po.Binary,
+        )
         ## Coordenadas do ponto i
-        self.x = po.Var(self.Ix, self.L, within=po.Reals)
+        self.x = po.Var(
+            self.Ix,
+            self.L,
+            within=po.Reals,
+        )
         ## Vetor distância entre os átomos i e j
-        self.v = po.Var(self.IJ, self.L, within=po.Reals)
+        self.v = po.Var(
+            self.IJ,
+            self.L,
+            within=po.Reals,
+        )
         ## Distância entre os átomos i e j (norma de v)
-        self.r = po.Var(self.IJ, within=po.Reals, bounds=(self.d_min, self.d_max))
+        self.r = po.Var(
+            self.IJ,
+            within=po.Reals,
+            bounds=(self.d_min, self.d_max),
+        )
 
     def _add_core_constrs(self):
         """
@@ -142,6 +158,7 @@ class poBaseModel(po.ConcreteModel):
         self.IJ = self.IJyx | self.IJxx
         ## K Set
         self.K = po.Set(initialize=np.arange(self.m)[freqs != 0].tolist())
+        self.IJK = self.IJ * self.K
 
         # OTHER INSTANCE ATTRS
         self.y = po.Param(
@@ -184,8 +201,8 @@ class poBaseModel(po.ConcreteModel):
 
         lbd = self.model_params["Lambda"]
 
-        self.objective += -lbd * (
-            sum(self.a[i, j, k] ** 2 for i, j, k in self.IJ * self.K) - len(self.IJ)
+        self.objective += lbd * (
+            len(self.IJ) - sum(self.a[ijk] ** 2 for ijk in self.IJK)
         )
 
     def get_solver(

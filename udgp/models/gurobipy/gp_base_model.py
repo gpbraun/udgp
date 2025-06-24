@@ -210,8 +210,8 @@ class gpBaseModel(gp.Model):
 
         lbd = self.model_params["Lambda"]
 
-        self.objective += -lbd * (
-            gp.quicksum(a**2 for a in self.a.values()) - len(self.IJ)
+        self.objective += lbd * (
+            len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
         )
 
     def set_solver_params(
