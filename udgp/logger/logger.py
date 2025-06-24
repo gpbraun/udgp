@@ -8,16 +8,16 @@ from typing import Literal
 
 import rich.logging
 
-LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
+LogLevel = Literal[
+    "CRITICAL",
+    "ERROR",
+    "WARNING",
+    "INFO",
+    "DEBUG",
+    "NOTSET",
+]
 
-_LEVELS = {
-    "CRITICAL": logging.CRITICAL,
-    "ERROR": logging.ERROR,
-    "WARNING": logging.WARNING,
-    "INFO": logging.INFO,
-    "DEBUG": logging.DEBUG,
-    "NOTSET": logging.NOTSET,
-}
+_LEVELS = {n: getattr(logging, n) for n in logging.getLevelNamesMapping()}
 
 
 def _resolve_level(level: str | int) -> int:
@@ -32,6 +32,19 @@ def _resolve_level(level: str | int) -> int:
     if isinstance(level, int):
         return level
     raise TypeError("level must be str or int")
+
+
+class _SolverInfoFilter(logging.Filter):
+    """
+    Filter solver info.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # GUROBI/GUROBIPY
+        if record.name.startswith("gurobi"):
+            record.levelno = logging.DEBUG
+            record.levelname = "DEBUG"
+        return True
 
 
 def set_logger(
@@ -50,6 +63,8 @@ def set_logger(
     root = logging.getLogger()
     root.handlers.clear()
 
+    solver_info_filter = _SolverInfoFilter()
+
     # 2) console handler (only if requested)
     if log_to_console:
         console = rich.logging.RichHandler(
@@ -60,6 +75,7 @@ def set_logger(
             show_path=False,
         )
         console.setLevel(lvl)
+        console.addFilter(solver_info_filter)
         console.setFormatter(
             logging.Formatter(
                 "%(message)s",
@@ -76,9 +92,11 @@ def set_logger(
             encoding="utf-8",
         )
         file_handler.setLevel(lvl)
+        file_handler.addFilter(solver_info_filter)
         file_handler.setFormatter(
             logging.Formatter(
-                "%(name)s | %(levelname)s | %(message)s",
+                "[ %(levelname)s ] %(message)s",
+                # "%(name)s | %(levelname)s | %(message)s",
             )
         )
         root.addHandler(file_handler)

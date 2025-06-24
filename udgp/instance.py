@@ -27,7 +27,7 @@ class Instance:
         points: np.ndarray | None = None,
     ):
         if freqs is None:
-            freqs = np.ones_like(dists, dtype=np.int64)
+            freqs = np.ones_like(dists, dtype=np.int16)
 
         self.n = n
 
@@ -51,7 +51,7 @@ class Instance:
         return len(self.dists)
 
     @property
-    def fixed_n(self):
+    def n_fixed(self):
         """
         Retorna (int): número de átomos da solução atual (fixados).
         """
@@ -80,13 +80,13 @@ class Instance:
 
     def view(self, *args, **kwargs):
         """
-        Retorna (py3Dmol.view): visualização da solução com py3Dmol.
+        Retorna (py3Dmol.view): visualização da solução encontrada com py3Dmol.
         """
         return points_view(self.points, *args, **kwargs)
 
     def view_input(self, *args, **kwargs):
         """
-        Retorna (py3Dmol.view): visualização da instância com py3Dmol.
+        Retorna (py3Dmol.view): visualização da instância original com py3Dmol.
         """
         if self.input_points is None:
             return
@@ -194,44 +194,51 @@ class Instance:
         *,
         nx: int | None = None,
         ny: int | None = None,
-        relaxed: bool = False,
-        config: dict = None,
+        relax_a: bool = False,
         previous_a: list | None = None,
+        model_params: dict | None = None,
+        solver_params: dict | None = None,
         backend="pyomo",
     ):
         """
         Resolve a instância.
         """
-        ny = self.fixed_n if ny is None else ny
-        nx = self.n - self.fixed_n if nx is None else nx
+        ny = self.n_fixed if ny is None else ny
+        nx = self.n - self.n_fixed if nx is None else nx
 
         rng = np.random.default_rng()
-        y_indices = np.sort(rng.choice(self.fixed_n, ny, replace=False))
-        x_indices = np.arange(self.fixed_n, nx + self.fixed_n)
+        y_indices = np.sort(rng.choice(self.n_fixed, ny, replace=False))
+        x_indices = np.arange(self.n_fixed, nx + self.n_fixed)
+
+        print(self.repeat_dists)
 
         model = get_model(
             model_name,
             backend=backend,
-            relaxed=relaxed,
             x_indices=x_indices,
             y_indices=y_indices,
             dists=self.dists,
             freqs=self.freqs,
             fixed_points=self.points,
+            model_params=model_params,
             previous_a=previous_a,
         )
-        solved = model.solve(config=config)
+        if relax_a:
+            model.relax_a()
 
-        self.runtime += model.runtime
-        self.work += model.work
+        solve_ok = model.solve(solver_params=solver_params)
 
-        if not solved:
+        self.runtime += model.total_runtime
+        self.work += model.total_work
+
+        if not solve_ok:
             return False
 
         # ATUALIZA A INSTÂNCIA
-        new_points = model.solution_points()
-        max_err = 1e-2
-        if not self.add_points(new_points, max_err):
+        max_err = 1e-1
+        points_ok = self.add_points(model.solution_points(), max_err)
+
+        if not points_ok:
             return False
         else:
             return True
@@ -272,7 +279,7 @@ class Instance:
     @classmethod
     def lj_cluster(cls, n, freq=True):
         """
-        Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
+        Retorna (Instance): instância de cluster de Lennard-Jones com `n` (entre 3 e 150) átomos.
 
         Referência: https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/tables.150.html
         """
@@ -283,7 +290,7 @@ class Instance:
     @classmethod
     def c60(cls, freq=True):
         """
-        Retorna (Instance): instância de cluster de Lennard-Jones com n (entre 3 e 150) átomos.
+        Retorna (Instance): instância de cluster de Lennard-Jones com `n` (entre 3 e 150) átomos.
 
         Referência: https://webbook.nist.gov/cgi/inchi?ID=C99685968&Mask=20
         """

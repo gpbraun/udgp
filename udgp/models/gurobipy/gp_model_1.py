@@ -8,14 +8,16 @@ from .gp_base_model import gpBaseModel
 
 
 class gpM1(gpBaseModel):
-    """Modelo M1 para o uDGP."""
+    """
+    uDGP model M1.
+    """
 
-    def __init__(self, *args, **kwargs):
-        super(gpM1, self).__init__(*args, **kwargs)
-        self.Params.LogToConsole = 0
-        self.name = "M1"
+    NAME = "M1"
 
-        # VARIÁVEIS
+    def model_post_init(self):
+        super().model_post_init()
+
+        # M1 VARIABLES
         self.s = self.addVars(
             self.IJK,
             name="s",
@@ -38,29 +40,17 @@ class gpM1(gpBaseModel):
             ub=gp.GRB.INFINITY,
         )
 
-        # RESTRIÇÕES
-        self._constr_x1 = self.addConstrs(
+        # M1 CONSTRAINTS
+        self._constr_m1_1 = self.addConstrs(
             self.s[i, j, k] == self.r[i, j] * self.r[i, j] - self.dists[k] ** 2
             for i, j, k in self.IJK
         )
-        self._constr_x2 = self.addConstrs(
+        self._constr_m1_2 = self.addConstrs(
             self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k] for i, j, k in self.IJK
         )
-        self._constr_x3 = self.addConstrs(
+        self._constr_m1_3 = self.addConstrs(
             self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k] for i, j, k in self.IJK
         )
-        # OBJETIVO
-        if self.relaxed:
-            self.setObjective(
-                1
-                + self.u.sum()
-                + len(self.IJ)
-                - gp.quicksum(
-                    self.a[i, j, k] * self.a[i, j, k] - 1 for i, j, k in self.IJK
-                ),
-                gp.GRB.MINIMIZE,
-            )
-        else:
-            self.setObjective(self.u.sum() + 1, gp.GRB.MINIMIZE)
 
-        self.update()
+        # M1 OBJECTIVE
+        self.objective = 1 + self.u.sum()

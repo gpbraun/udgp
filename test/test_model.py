@@ -1,6 +1,6 @@
 import udgp
 
-udgp.set_logger("INFO", log_to_console=False, log_file="test/teste.log")
+udgp.set_logger("DEBUG", log_to_console=False, log_file="test/teste.log")
 
 N = 5
 instance = udgp.Instance.artificial_molecule(
@@ -9,4 +9,8 @@ instance = udgp.Instance.artificial_molecule(
     seed=123456,
 )
 
-instance.solve("M2", backend="gurobipy")
+instance.solve("M3", backend="gurobipy")
+
+print(f"WORK: {instance.work}")
+
+print(instance.points)

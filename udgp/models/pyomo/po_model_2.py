@@ -10,13 +10,16 @@ from .po_base_model import poBaseModel
 
 
 class poM2(poBaseModel):
-    """Modelo M2 para o uDGP."""
+    """
+    uDGP model M2.
+    """
 
-    def __init__(self, *args, **kwargs):
-        super(poM2, self).__init__(*args, **kwargs)
-        self.name = "M2"
+    NAME = "M2"
 
-        # VARIÁVEIS
+    def model_post_init(self):
+        super().model_post_init()
+
+        # M2 VARIABLES
         ## Erro no cálculo da distância
         self.p = po.Var(
             self.IJ,
@@ -34,54 +37,45 @@ class poM2(poBaseModel):
             self.IJ,
             self.K,
             within=po.NonNegativeReals,
-            # bounds=(0, self.d_max),
+            bounds=(0, self.d_max),
         )
 
-        # RESTRIÇÕES
+        # M2 CONSTRAINTS
         @self.Constraint(self.IJ, self.K)
-        def _constr_x1(self, i, j, k):
+        def _constr_m2_1(self, i, j, k):
             return self.w[i, j, k] >= self.p[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x2(self, i, j, k):
+        def _constr_m2_2(self, i, j, k):
             return self.w[i, j, k] >= -self.p[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x3(self, i, j, k):
+        def _constr_m2_3(self, i, j, k):
             return self.z[i, j, k] >= self.r[i, j] - self.d_max * (1 - self.a[i, j, k])
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x4(self, i, j, k):
+        def _constr_m2_4(self, i, j, k):
             return self.z[i, j, k] <= self.r[i, j] + self.d_max * (1 - self.a[i, j, k])
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x5(self, i, j, k):
+        def _constr_m2_5(self, i, j, k):
             return self.z[i, j, k] >= -self.d_max * self.a[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x6(self, i, j, k):
+        def _constr_m2_6(self, i, j, k):
             return self.z[i, j, k] <= self.d_max * self.a[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x7(self, i, j, k):
+        def _constr_m2_7(self, i, j, k):
             return self.z[i, j, k] >= self.dists[k] + self.p[i, j, k] - self.d_max * (
                 1 - self.a[i, j, k]
             )
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x8(self, i, j, k):
+        def _constr_m2_8(self, i, j, k):
             return self.z[i, j, k] <= self.dists[k] + self.p[i, j, k] + self.d_max * (
                 1 - self.a[i, j, k]
             )
 
-        # OBJETIVO
-        def relaxed_objective(model):
-            return 1 + po.summation(model.w) - po.summation(model.a)
-
-        def objective(model):
-            return 1 + po.summation(model.w)
-
-        self.obj = po.Objective(
-            sense=po.minimize,
-            rule=relaxed_objective if self.relaxed else objective,
-        )
+        # M2 OBJECTIVE
+        self.objective = 1 + po.summation(self.w)

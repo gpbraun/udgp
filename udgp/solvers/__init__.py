@@ -1,1 +1,1 @@
-from .solver_config import get_config, set_config
+from .solver_params import get_solver_params, set_solver_params

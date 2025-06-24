@@ -10,13 +10,16 @@ from .po_base_model import poBaseModel
 
 
 class poM1(poBaseModel):
-    """Modelo M1 para o uDGP."""
+    """
+    uDGP model M1.
+    """
 
-    def __init__(self, *args, **kwargs):
-        super(poM1, self).__init__(*args, **kwargs)
-        self.name = "M1"
+    NAME = "M1"
 
-        # VARIÁVEIS
+    def model_post_init(self):
+        super().model_post_init()
+
+        # M1 VARIABLES
         self.s = po.Var(
             self.IJ,
             self.K,
@@ -33,32 +36,18 @@ class poM1(poBaseModel):
             within=po.Reals,
         )
 
-        # RESTRIÇÕES
+        # M1 CONSTRAINTS
         @self.Constraint(self.IJ, self.K)
-        def _constr_x1(self, i, j, k):
+        def _constr_m1_1(self, i, j, k):
             return self.s[i, j, k] == self.r[i, j] * self.r[i, j] - self.dists[k] ** 2
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x2(self, i, j, k):
+        def _constr_m1_2(self, i, j, k):
             return self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k]
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_x3(self, i, j, k):
+        def _constr_m1_(self, i, j, k):
             return self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k]
 
-        # OBJETIVO
-        def relaxed_objective(model):
-            return (
-                1
-                + len(model.IJ)
-                + po.summation(model.u)
-                - sum(model.a[i, j, k] ** 2 for i, j, k in model.IJ * model.K)
-            )
-
-        def objective(model):
-            return 1 + po.summation(model.u)
-
-        self.obj = po.Objective(
-            sense=po.minimize,
-            rule=relaxed_objective if self.relaxed else objective,
-        )
+        # M1 OBJECTIVE
+        self.objective = 1 + po.summation(self.u)

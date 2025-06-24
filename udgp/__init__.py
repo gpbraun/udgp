@@ -1,6 +1,6 @@
 from udgp.instance import *
 from udgp.logger import set_logger
-from udgp.solvers import set_config
+from udgp.solvers import set_solver_params
 
 set_logger()
 
