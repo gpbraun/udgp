@@ -39,14 +39,14 @@ class poM1(poBaseModel):
         # M1 CONSTRAINTS
         @self.Constraint(self.IJ, self.K)
         def _constr_m1_1(self, i, j, k):
-            return self.s[i, j, k] == self.r[i, j] * self.r[i, j] - self.dists[k] ** 2
+            return self.s[i, j, k] == self.r[i, j] ** 2 - self.dists[k] ** 2
 
         @self.Constraint(self.IJ, self.K)
         def _constr_m1_2(self, i, j, k):
-            return self.t[i, j, k] == self.s[i, j, k] * self.s[i, j, k]
+            return self.t[i, j, k] == self.s[i, j, k] ** 2
 
         @self.Constraint(self.IJ, self.K)
-        def _constr_m1_(self, i, j, k):
+        def _constr_m1_3(self, i, j, k):
             return self.u[i, j, k] == self.a[i, j, k] * self.t[i, j, k]
 
         # M1 OBJECTIVE

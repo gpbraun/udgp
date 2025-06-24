@@ -9,7 +9,7 @@ instance = udgp.Instance.artificial_molecule(
     seed=123456,
 )
 
-instance.solve("M3", backend="gurobipy")
+instance.solve("M1", backend="gurobipy", relax_a=True)
 
 print(f"WORK: {instance.work}")
 
