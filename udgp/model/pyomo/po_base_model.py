@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import pyomo.environ as po
 
-from udgp.solvers import get_solver_params
+from udgp.solver import get_solver_params
 
 logger = logging.getLogger("uDGP")
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pyomo.environ as po
 
-from ...udgp.models.pyomo.po_base_model import poBaseModel
+from ...udgp.model.pyomo.po_base_model import poBaseModel
 
 
 class poM3(poBaseModel):

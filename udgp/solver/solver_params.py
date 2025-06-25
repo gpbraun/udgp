@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 import yaml
 
-_PARAMS_DEFAULTS_PATH = resources.files("udgp.solvers").joinpath("solver_params.yaml")
+_PARAMS_DEFAULTS_PATH = resources.files("udgp.solver").joinpath("solver_params.yaml")
 
 # Internal tables
 _PARAMS_SOLVER = {}

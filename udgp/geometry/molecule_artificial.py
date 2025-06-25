@@ -1,18 +1,25 @@
-"""Gabriel Braun, 2023
+"""
+Gabriel Braun, 2023
 
 Este módulo implementa funções para geração de instâncias de moléculas artificiais para o uDGP.
 
 Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
 """
 
+__all__ = [
+    "geom_molecule_artificial",
+]
+
+
 import numpy as np
+import numpy.typing as npt
 
 BOND_LENGTH_VALUES = np.array([1.5], dtype=np.float64)
 BOND_ANGLE_VALUES = np.array([np.arccos(-1 / 3)], dtype=np.float64)
 TORSION_ANGLE_VALUES = np.array([np.pi / 3, np.pi, 5 * np.pi / 3], dtype=np.float64)
 
 
-def b_matrix(i: int, rng=None):
+def b_matrix(i: int, rng=np.random.Generator):
     """
     Retorna: matriz B de índice i.
 
@@ -21,8 +28,6 @@ def b_matrix(i: int, rng=None):
     if i == 0:
         return np.identity(4, dtype=np.float64)
 
-    if rng is None:
-        rng = np.random.default_rng()
     r = rng.choice(BOND_LENGTH_VALUES)
 
     if i == 1:
@@ -76,13 +81,18 @@ def b_matrix(i: int, rng=None):
     )
 
 
-def artificial_molecule_points(n: int, seed: int = None):
+def geom_molecule_artificial(
+    n: int,
+    rng: np.random.Generator | None = None,
+    seed: int | None = None,
+) -> np.ndarray:
     """
     Retorna: matriz de coordenadas de uma molécula gerada artificialmente.
 
     Referência: Lavor, C. (2006) https://doi.org/10.1007/0-387-30528-9_14
     """
-    rng = np.random.default_rng(seed)
+    rng = rng or np.random.default_rng(seed)
+
     points = np.zeros((n, 3), dtype=np.float64)
 
     b = b_matrix(0, rng)

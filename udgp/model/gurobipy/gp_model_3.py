@@ -23,7 +23,7 @@ class gpM3(gpM2):
     NAME = "M3"
     PARAMS = {
         **gpM2.PARAMS,
-        "Mu": 0.001,
+        "Mu": 1.2,
         "DCAMaxIter": 1000,
         "DCATol": 1.0e-6,
     }
@@ -81,6 +81,24 @@ class gpM3(gpM2):
 
         # ---------- loop DCA -----------------------------------------
         for it in range(1, max_iter + 1):
+            # self.objective = 0
+
+            # self.setObjectiveN(
+            #     self.w.sum(),
+            #     index=0,
+            #     priority=1,
+            #     abstol=1e-2,
+            #     name="assign_err",
+            # )
+            # self.setObjectiveN(
+            #     self.r.sum()
+            #     - gp.quicksum(2.0 * vv @ var for vv, var in zip(v_prev, v_vars)),
+            #     index=1,
+            #     priority=2,
+            #     weight=mu,
+            #     abstol=1e-2,
+            #     name="geom_energy",
+            # )
 
             self.objective = (
                 gp.quicksum(w for w in self.w.values())
@@ -106,16 +124,21 @@ class gpM3(gpM2):
             self.total_work += self.Work
 
         # LOGS AUXILIARES PARA DESENVOLVIMENTO!
-        np.set_printoptions(
-            precision=3,
-            suppress=True,
-            linewidth=120,
-        )
-
         def _log_section():
             logger.info("")
             logger.info("=" * 80)
             logger.info("")
+
+        def _log_array_row(header, array):
+            logger.info(
+                f"{header:<4}"
+                + "".join(
+                    [
+                        f"{0:>7}" if np.isclose(x, 0, atol=1e-4) else f"{x:>7.3f}"
+                        for x in array
+                    ]
+                )
+            )
 
         _log_section()
 
@@ -123,31 +146,48 @@ class gpM3(gpM2):
 
         _log_section()
 
-        var_r = np.sqrt(np.sort(np.array([r.X for r in self.r.values()])))
-        calc_r = np.sort(np.linalg.norm(self.sol_v_array, axis=1))
-        input_r = np.sqrt(np.sort(np.repeat(self.dists, self.freqs)))
+        ij_indices = self.IJ
+        k_indices = [self.assignments.get((i, j)) for i, j in ij_indices]
 
-        logger.info(f"Rv   {var_r}")
-        logger.info(f"Rc   {calc_r}")
-        logger.info(f"Ri   {input_r}")
+        logger.info(f"i, j" + "".join([f"    {i},{j}" for i, j in ij_indices]))
+        logger.info(f"k   " + "".join([f"{k:>7}" for k in k_indices]))
 
-        logger.info("")
+        logger.info("-" * (len(ij_indices) + 1) * 7)
 
-        err2_vc = np.sort(abs(calc_r**2 - var_r**2))
-        err2_ic = np.sort(abs(calc_r**2 - input_r**2))
-        err2_iv = np.sort(abs(input_r**2 - var_r**2))
+        # r - variables
+        r_v = np.sqrt(np.array([r.X for r in self.r.values()]))
+        # r - calculated from points
+        r_c = np.linalg.norm(self.sol_v_array, axis=1)
+        # r - input
+        r_i = np.sqrt([self.dists[k] for k in k_indices])
 
-        logger.info(f"E2vc {err2_vc}")
-        logger.info(f"E2ic {err2_ic}")
-        logger.info(f"E2iv {err2_iv}")
+        _log_array_row("Rv", r_v)
+        _log_array_row("Rc", r_c)
+        _log_array_row("Ri", r_i)
 
-        _log_section()
+        logger.info("-" * (len(ij_indices) + 1) * 7)
 
-        w = np.sort(np.array([w.X for w in self.w.values()]))
-        err_iv = np.sort(abs(input_r - var_r))
+        err2_vc = abs(r_c**2 - r_v**2)
+        err2_ic = abs(r_c**2 - r_i**2)
+        err2_iv = abs(r_i**2 - r_v**2)
+        w = np.array([w.X for w in self.w.values()])
+        p = np.array([p.X for p in self.p.values()])
 
-        logger.info(f"Eiv  {err_iv}")
-        logger.info(f"y:   {w[w != 0]}")
+        _log_array_row("E2ci", err2_ic)
+        _log_array_row("E2cv", err2_vc)
+        _log_array_row("E2vi", err2_iv)
+        _log_array_row("y", w)
+        _log_array_row("alph", p)
+
+        # _log_section()
+
+        # err_vc = abs(calc_r - var_r)
+        # err_ic = abs(calc_r - input_r)
+        # err_iv = abs(input_r - var_r)
+
+        # logger.info(f"Eci  {err_ic}")
+        # logger.info(f"Ecv  {err_vc}")
+        # logger.info(f"Evi  {err_iv}")
 
         _log_section()
 

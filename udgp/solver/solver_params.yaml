@@ -7,17 +7,18 @@ gurobi:
   Presolve: 2
   ScaleFlag: 2
   NumericFocus: 1
+  Threads: 0
 
 gurobi.M3.dca_init:
-  SolutionLimit: 1
-  # TimeLimit: 100
+  MIPGap: 1.0e-2
+  TimeLimit: 100
+  SolutionLimit: 5
   MIPGap: 0.1
   Heuristics: 0.50
   MIPFocus: 1
   Cuts: 1
   Presolve: 2
-  Threads: 0
-
+  
 gurobi.M3.dca_iter:
   NonConvex: 0
   MIPGap: 1.0e-6
@@ -25,4 +26,3 @@ gurobi.M3.dca_iter:
   MIPFocus: 2
   Cuts: -1
   Presolve: 2
-  Threads: 0

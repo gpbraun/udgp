@@ -9,7 +9,7 @@ from typing import Any
 import gurobipy as gp
 import numpy as np
 
-from udgp.solvers import get_solver_params
+from udgp.solver import get_solver_params
 
 logger = logging.getLogger("udgp")
 
@@ -21,6 +21,7 @@ class gpBaseModel(gp.Model):
 
     NAME = "Base"
     PARAMS = {
+        "Relax": 0,
         "Lambda": 1,
     }
 
@@ -96,10 +97,14 @@ class gpBaseModel(gp.Model):
         self._constr_r = self.addConstrs(
             self.r[i, j] == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
         )
-        ## Constraint to take previous solutions into account
+
+    def add_previous_solution_constrs(self, previous_a: list[tuple[int]]):
+        """
+        Adds constraints to prevent previous solutions.
+        """
         self._constr_previous_a = self.addConstrs(
             gp.quicksum(self.a[ijk] for ijk in a_ijk_idx) <= len(a_ijk_idx) - 1
-            for a_ijk_idx in self.previous_a
+            for a_ijk_idx in previous_a
         )
 
     @property
@@ -145,7 +150,6 @@ class gpBaseModel(gp.Model):
         freqs: np.ndarray,
         fixed_points: np.ndarray,
         model_params: dict | None = None,
-        previous_a: list | None = None,
         env=None,
     ):
         if not env:
@@ -185,8 +189,6 @@ class gpBaseModel(gp.Model):
         self.d_min = self.dists.min()
         self.d_max = self.dists.max()
 
-        self.previous_a = previous_a if previous_a is not None else []
-
         # VARIABLES AND CONSTRAINTS
         self._add_core_vars()
         self._add_core_constrs()
@@ -195,11 +197,15 @@ class gpBaseModel(gp.Model):
         self.update()
 
     @property
-    def sol_a_indices(self) -> list[tuple]:
+    def assignments(self) -> dict[tuple[int], int]:
         """
         Retorna (list[tuple]): indices que correspondem aos valores de a unitários.
         """
-        return [idx for idx, a in self.a.items() if ~np.isclose(a.X, 0)]
+        return {
+            (i, j): k
+            for (i, j, k), a in self.a.items()
+            if np.isclose(a.X, 1, atol=1e-2)
+        }
 
     @property
     def sol_x(self) -> dict:
@@ -229,9 +235,9 @@ class gpBaseModel(gp.Model):
         """
         return np.array([v.X for v in self.v.values()])
 
-    def relax_a(self):
+    def relax(self):
         """
-        Relax variables.
+        Relax `a` integer variables.
         """
         self.a.vtype = gp.GRB.CONTINUOUS
         self.a.lb = 0.0
@@ -242,6 +248,15 @@ class gpBaseModel(gp.Model):
         self.objective += lbd * (
             len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
         )
+
+    def model_pre_solve(self):
+        """
+        Run *before* the solve() routine.
+
+        Subclasses add their own logic here and should call super().
+        """
+        if self.model_params["Relax"]:
+            self.relax()
 
     def _set_solver_params(
         self,
@@ -283,6 +298,8 @@ class gpBaseModel(gp.Model):
 
         Retorna: verdadeiro se uma solução foi encontrada
         """
+        self.model_pre_solve()
+
         self._set_solver_params(stage=stage, overrides=solver_params)
         self.optimize()
 
