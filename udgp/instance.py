@@ -9,7 +9,7 @@ import numpy as np
 
 from udgp.instances import *
 from udgp.models import get_model
-from udgp.utils import *
+from udgp.utils.points import points_dists, points_view
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Instance:
         self.freqs = freqs
         self.points = np.zeros((1, 3), dtype=np.float16)
 
-        self.a_indices = np.empty((0, 3), dtype=np.int16)
+        self.a_indices = []
         self.status = "ok"
         self.runtime = 0.0
         self.work = 0.0
@@ -106,67 +106,23 @@ class Instance:
 
         return var < threshold
 
-    def reset(self, reset_runtime=False):
+    def reset(self, reset_runtime=True):
         """
         Reseta a instância para o estado inicial.
         """
         self.dists = self.dists.copy()
         self.freqs = self.input_freqs.copy()
         self.points = np.zeros((1, 3), dtype=np.float16)
-        self.a_indices = np.empty((0, 3), dtype=np.int16)
+        self.a_indices = []
         if reset_runtime:
             self.runtime = 0.0
             self.work = 0.0
 
-    def remove_dists(self, dists: np.ndarray, indices: np.ndarray, threshold=0.1):
-        """
-        Remove uma lista distâncias com repetições da lista de distsâncias remanescentes.
-
-        Parâmetros:
-        - dists (numpy.ndarray): lista de distância com repetições para serem removidas
-        - indices (numpy.ndarray): índices referentes às distâncias.
-
-        Retorna (bool): verdadeiro se todas as distsâncias fornecidas estavam na lista de distsâncias remanescentes.
-        """
-        new_freqs = self.freqs.copy()
-
-        for dist, (i, j) in zip(dists, indices):
-            if dist == 0:
-                return False
-
-            errors = np.ma.array(np.abs(1 - self.dists / dist), mask=new_freqs == 0)
-            k = errors.argmin()
-
-            if errors[k] < threshold:
-                new_freqs[k] -= 1
-                self.a_indices = np.vstack((self.a_indices, [i, j, k]))
-            else:
-                print(f"distância {dist} não está na lista: {self.dists}")
-                print(f"frequências: {new_freqs}")
-                print(f"erro mínimo: {self.dists[k]} -> {errors[k]}")
-                return False
-
-        self.freqs = new_freqs
-
-        return True
-
-    def add_points(self, new_points: np.ndarray, threshold=0.05):
-        """
-        Adiciona (fixa) novas coordenadas à solução.
-
-        Retorna (bool): verdadeiro se as distâncias entre os novos pontos e os pontos já fixados estavam na lista de distâncias remanescentes.
-        """
-        new_dists, new_indices = points_new_dists(
-            new_points, self.points, return_indices=True
-        )
-
-        if self.remove_dists(new_dists, new_indices, threshold):
-            self.points = np.r_[self.points, new_points]
-            return True
-
-        return False
-
-    def reset_with_core(self, core_type: str, n=5):
+    def reset_with_core(
+        self,
+        core_type: str,
+        n: int = 5,
+    ) -> None:
         """
         Reinicia a instância com um core de molécula artificial de n átomos como solução inicial.
         """
@@ -198,19 +154,17 @@ class Instance:
         previous_a: list | None = None,
         model_params: dict | None = None,
         solver_params: dict | None = None,
-        backend="pyomo",
-    ):
+        backend="gurobipy",
+    ) -> bool:
         """
         Resolve a instância.
         """
-        ny = self.n_fixed if ny is None else ny
-        nx = self.n - self.n_fixed if nx is None else nx
+        ny = ny or self.n_fixed
+        nx = nx or self.n - self.n_fixed
 
         rng = np.random.default_rng()
         y_indices = np.sort(rng.choice(self.n_fixed, ny, replace=False))
         x_indices = np.arange(self.n_fixed, nx + self.n_fixed)
-
-        print(self.repeat_dists)
 
         model = get_model(
             model_name,
@@ -234,14 +188,18 @@ class Instance:
         if not solve_ok:
             return False
 
-        # ATUALIZA A INSTÂNCIA
-        max_err = 1e-1
-        points_ok = self.add_points(model.solution_points(), max_err)
+        # UPDATE INSTANCE
+        self.points = np.r_[self.points, model.sol_x_array]
 
-        if not points_ok:
-            return False
-        else:
-            return True
+        for i, j, k in model.sol_a_indices:
+            error = abs(np.linalg.norm(model.sol_v[i, j]) - self.dists[k])
+            if error > 1e-2:
+                logger.info(f"ERRO NA DISTÂNCIA ({i}, {j}): {error}")
+
+            self.a_indices.append((i, j, k))
+            self.freqs[k] -= 1
+
+        return True
 
     def solve_heuristic(self):
         """

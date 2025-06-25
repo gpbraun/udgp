@@ -42,8 +42,7 @@ class gpM1(gpBaseModel):
 
         # M1 CONSTRAINTS
         self._constr_m1_1 = self.addConstrs(
-            self.s[i, j, k] == self.r[i, j] ** 2 - self.dists[k] ** 2
-            for i, j, k in self.IJK
+            self.s[i, j, k] == self.r[i, j] - self.dists[k] for i, j, k in self.IJK
         )
         self._constr_m1_2 = self.addConstrs(
             self.t[i, j, k] == self.s[i, j, k] ** 2 for i, j, k in self.IJK

@@ -95,7 +95,8 @@ def set_logger(
         file_handler.addFilter(solver_info_filter)
         file_handler.setFormatter(
             logging.Formatter(
-                "[ %(levelname)s ] %(message)s",
+                "%(message)s",
+                # "[ %(levelname)s ] %(message)s",
                 # "%(name)s | %(levelname)s | %(message)s",
             )
         )

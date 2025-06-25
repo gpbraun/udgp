@@ -94,7 +94,7 @@ class gpBaseModel(gp.Model):
             self.v[i, j] == self.y[i] - self.x[j] for i, j in self.IJyx
         )
         self._constr_r = self.addConstrs(
-            self.r[i, j] ** 2 == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
+            self.r[i, j] == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
         )
         ## Constraint to take previous solutions into account
         self._constr_previous_a = self.addConstrs(
@@ -167,8 +167,8 @@ class gpBaseModel(gp.Model):
 
         # INSTANCE SETS
         ## I Sets
-        self.Iy = gp.tuplelist(y_indices)
-        self.Ix = gp.tuplelist(x_indices)
+        self.Iy = gp.tuplelist(y_indices.tolist())
+        self.Ix = gp.tuplelist(x_indices.tolist())
         self.I = gp.tuplelist(chain(self.Iy, self.Ix))
         ## IJ Sets
         self.IJyx = gp.tuplelist(product(self.Iy, self.Ix))
@@ -180,10 +180,10 @@ class gpBaseModel(gp.Model):
 
         # OTHER INSTANCE ATTRS
         self.y = gp.tupledict((i, fixed_points[i]) for i in y_indices)
-        self.dists = dists
+        self.dists = dists**2
         self.freqs = freqs
-        self.d_min = dists.min()
-        self.d_max = dists.max()
+        self.d_min = self.dists.min()
+        self.d_max = self.dists.max()
 
         self.previous_a = previous_a if previous_a is not None else []
 
@@ -194,11 +194,40 @@ class gpBaseModel(gp.Model):
 
         self.update()
 
-    def solution_points(self) -> np.ndarray:
+    @property
+    def sol_a_indices(self) -> list[tuple]:
         """
-        Retorna (numpy.ndarray): pontos encontrados na solução do modelo.
+        Retorna (list[tuple]): indices que correspondem aos valores de a unitários.
         """
-        return np.array([self.x[i].X for i in self.Ix])
+        return [idx for idx, a in self.a.items() if ~np.isclose(a.X, 0)]
+
+    @property
+    def sol_x(self) -> dict:
+        """
+        Retorna (dict): mapa de valores da variável x.
+        """
+        return {idx: x.X for idx, x in self.x.items()}
+
+    @property
+    def sol_v(self) -> dict:
+        """
+        Retorna (dict): mapa de valores da variável v.
+        """
+        return {idx: v.X for idx, v in self.v.items()}
+
+    @property
+    def sol_x_array(self) -> np.ndarray:
+        """
+        Retorna (numpy.ndarray): valores da variável x.
+        """
+        return np.array([x.X for x in self.x.values()])
+
+    @property
+    def sol_v_array(self) -> np.ndarray:
+        """
+        Retorna (numpy.ndarray): valores da variável v.
+        """
+        return np.array([v.X for v in self.v.values()])
 
     def relax_a(self):
         """

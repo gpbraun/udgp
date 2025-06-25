@@ -10,7 +10,7 @@ gurobi:
 
 gurobi.M3.dca_init:
   SolutionLimit: 1
-  TimeLimit: 10
+  # TimeLimit: 100
   MIPGap: 0.1
   Heuristics: 0.50
   MIPFocus: 1
@@ -19,10 +19,10 @@ gurobi.M3.dca_init:
   Threads: 0
 
 gurobi.M3.dca_iter:
+  NonConvex: 0
   MIPGap: 1.0e-6
   Heuristics: 0.05
   MIPFocus: 2
   Cuts: -1
   Presolve: 2
   Threads: 0
-  NonConvex: 0
