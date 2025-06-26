@@ -13,9 +13,15 @@ class gpM2(gpBaseModel):
     """
 
     NAME = "M2"
+    PARAMS = {
+        **gpBaseModel.PARAMS,
+        "MaxD2Gap": 1e-2,
+    }
 
     def model_post_init(self):
         super().model_post_init()
+
+        max_gap = self.ModelParams.MaxD2Gap
 
         # M2 VARIABLES
         ## p: calculated distance error
@@ -23,8 +29,8 @@ class gpM2(gpBaseModel):
             self.IJ,
             name="p",
             vtype=gp.GRB.CONTINUOUS,
-            lb=-gp.GRB.INFINITY,
-            ub=gp.GRB.INFINITY,
+            lb=-max_gap,
+            ub=max_gap,
         )
         ## w: calculated distance absolute error
         self.w = self.addVars(
@@ -32,7 +38,7 @@ class gpM2(gpBaseModel):
             name="w",
             vtype=gp.GRB.CONTINUOUS,
             lb=0,
-            ub=gp.GRB.INFINITY,
+            ub=max_gap,
         )
         ## z: distância k se ela é referente ao par de átomos i e j. 0 em caso contrátrio.
         self.z = self.addVars(

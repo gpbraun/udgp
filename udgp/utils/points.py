@@ -1,6 +1,7 @@
-"""Gabriel Braun, 2023
-
+"""
 Este módulo implementa funções gerais para manipulação de instâncias do problema uDGP.
+
+Gabriel Braun, 2023
 """
 
 import numpy as np

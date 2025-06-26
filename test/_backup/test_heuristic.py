@@ -6,6 +6,18 @@ from udgp import Instance
 env = gp.Env()
 
 
+# HISTÓRICO:
+# NÃO ACHO MAIS UMA BOA IDEIA PRA ITERAÇÃO DA HEURÍSTICA...
+def add_previous_solution_constrs(self, previous_a: list[tuple[int]]):
+    """
+    Adds constraints to prevent previous solutions.
+    """
+    self._constr_previous_a = self.addConstrs(
+        gp.quicksum(self.a[ijk] for ijk in a_ijk_idx) <= len(a_ijk_idx) - 1
+        for a_ijk_idx in previous_a
+    )
+
+
 def np_value(x):
     return np.format_float_positional(
         x, precision=3, unique=False, fractional=False, trim="k"

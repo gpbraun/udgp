@@ -1,24 +1,21 @@
 gurobi:
   LogToConsole: 0
-  NonConvex: -1
-  MIPGap: 1.0e-2
-  Heuristics: 0.50
-  Cuts: 1
-  Presolve: 2
-  ScaleFlag: 2
-  NumericFocus: 1
   Threads: 0
 
-gurobi.M3.dca_init:
-  MIPGap: 1.0e-2
-  TimeLimit: 100
-  SolutionLimit: 5
-  MIPGap: 0.1
-  Heuristics: 0.50
+gurobi.M2:
+  SolutionLimit: 1
+  PoolSolutions: 1
   MIPFocus: 1
-  Cuts: 1
-  Presolve: 2
-  
+  Heuristics: 0.90
+  Cuts: 0
+
+gurobi.M3.dca_init:
+  SolutionLimit: 1
+  PoolSolutions: 1
+  MIPFocus: 1
+  Heuristics: 0.90
+  Cuts: 0
+
 gurobi.M3.dca_iter:
   NonConvex: 0
   MIPGap: 1.0e-6

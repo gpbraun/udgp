@@ -10,6 +10,7 @@ import gurobipy as gp
 import numpy as np
 
 from udgp.solver import get_solver_params
+from udgp.utils.params import ParamView
 
 logger = logging.getLogger("udgp")
 
@@ -31,16 +32,49 @@ class gpBaseModel(gp.Model):
         except AttributeError:
             return super(gp.Model, self).__setattr__(*args)
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        all_params = {}
+        for model in reversed(cls.mro()):
+            all_params.update(getattr(model, "PARAMS", {}))
+
+        cls._PARAMS = all_params
+
+    def _set_model_params(
+        self,
+        overrides: dict[str, Any] | None = None,
+    ):
+        """
+        Sets: model-specific params.
+        """
+        self._model_params = dict(self._PARAMS)
+        if overrides is not None:
+            self._model_params.update(overrides)
+
+        self.ModelParams = ParamView(self._model_params)
+
     def _add_core_vars(self):
         """
         Add the variables to the models.
         """
         # Decisão: distância k é referente ao par de átomos i e j
-        self.a = self.addVars(
-            self.IJK,
-            name="a",
-            vtype=gp.GRB.BINARY,
-        )
+        if self.ModelParams.Relax:
+            # continuous `a` variable
+            self.a = self.addVars(
+                self.IJK,
+                name="a",
+                vtype=gp.GRB.CONTINUOUS,
+                lb=0,
+                ub=1,
+            )
+        else:
+            # binary `a` variable
+            self.a = self.addVars(
+                self.IJK,
+                name="a",
+                vtype=gp.GRB.BINARY,
+            )
         # Coordenadas do ponto i
         self.x = gp.tupledict(
             (
@@ -98,15 +132,6 @@ class gpBaseModel(gp.Model):
             self.r[i, j] == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
         )
 
-    def add_previous_solution_constrs(self, previous_a: list[tuple[int]]):
-        """
-        Adds constraints to prevent previous solutions.
-        """
-        self._constr_previous_a = self.addConstrs(
-            gp.quicksum(self.a[ijk] for ijk in a_ijk_idx) <= len(a_ijk_idx) - 1
-            for a_ijk_idx in previous_a
-        )
-
     @property
     def objective(self):
         """
@@ -121,17 +146,6 @@ class gpBaseModel(gp.Model):
         """
         self._objective = expr
         self.setObjective(expr, gp.GRB.MINIMIZE)
-
-    def set_model_params(
-        self,
-        overrides: dict[str, Any] | None = None,
-    ):
-        """
-        Sets: model-specific params.
-        """
-        self.model_params = dict(self.PARAMS)
-        if overrides is not None:
-            self.model_params.update(overrides)
 
     def model_post_init(self):
         """
@@ -159,7 +173,7 @@ class gpBaseModel(gp.Model):
 
         super(gpBaseModel, self).__init__(f"uDGP_{self.NAME}", env)
 
-        self.set_model_params(overrides=model_params)
+        self._set_model_params(overrides=model_params)
 
         self.total_runtime = 0
         self.total_work = 0
@@ -235,28 +249,17 @@ class gpBaseModel(gp.Model):
         """
         return np.array([v.X for v in self.v.values()])
 
-    def relax(self):
-        """
-        Relax `a` integer variables.
-        """
-        self.a.vtype = gp.GRB.CONTINUOUS
-        self.a.lb = 0.0
-        self.a.ub = 1.0
-
-        lbd = self.model_params["Lambda"]
-
-        self.objective += lbd * (
-            len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
-        )
-
     def model_pre_solve(self):
         """
         Run *before* the solve() routine.
 
         Subclasses add their own logic here and should call super().
         """
-        if self.model_params["Relax"]:
-            self.relax()
+        if self.ModelParams.Relax:
+            lbd = self.ModelParams.Lambda
+            self.objective += lbd * (
+                len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
+            )
 
     def _set_solver_params(
         self,
