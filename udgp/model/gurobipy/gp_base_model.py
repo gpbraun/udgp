@@ -15,7 +15,7 @@ from udgp.utils.params import ParamView
 logger = logging.getLogger("udgp")
 
 
-class gpBaseModel(gp.Model):
+class gpBaseModel:
     """
     uDGP base model.
     """
@@ -26,11 +26,12 @@ class gpBaseModel(gp.Model):
         "Lambda": 1,
     }
 
-    def __setattr__(self, *args):
-        try:
-            return super(gpBaseModel, self).__setattr__(*args)
-        except AttributeError:
-            return super(gp.Model, self).__setattr__(*args)
+    # ==================================================================================
+    #   HELPERS
+    # ==================================================================================
+
+    def __getattr__(self, name):
+        return getattr(self._model, name)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -40,6 +41,59 @@ class gpBaseModel(gp.Model):
             all_params.update(getattr(model, "PARAMS", {}))
 
         cls._PARAMS = all_params
+
+    # ==================================================================================
+    #   CONSTRUCTOR
+    # ==================================================================================
+
+    def __init__(
+        self,
+        *,
+        x_indices: np.ndarray,
+        y_indices: np.ndarray,
+        dists: np.ndarray,
+        freqs: np.ndarray,
+        fixed_points: np.ndarray,
+        model_params: dict | None = None,
+        env: gp.Env | None = None,
+    ):
+        self.time = 0.0
+        self.work = 0.0
+
+        # SETS AND INSTANCE DATA
+        self.m = len(dists)
+        self.nx = len(x_indices)
+        self.ny = len(y_indices)
+
+        ## index sets
+        self.Iy = gp.tuplelist(y_indices.tolist())
+        self.Ix = gp.tuplelist(x_indices.tolist())
+        self.I = gp.tuplelist(chain(self.Iy, self.Ix))
+
+        self.IJyx = gp.tuplelist(product(self.Iy, self.Ix))
+        self.IJxx = gp.tuplelist(combinations(self.Ix, 2))
+        self.IJ = gp.tuplelist(chain(self.IJyx, self.IJxx))
+
+        self.K = gp.tuplelist([k for k in range(self.m) if freqs[k] > 0])
+        self.IJK = gp.tuplelist([(i, j, k) for (i, j), k in product(self.IJ, self.K)])
+
+        ## data
+        self.y = gp.tupledict((i, fixed_points[i]) for i in y_indices)
+        self.d = dists**2
+        self.f = freqs
+
+        # BUILD INTERNAL GUROBIPY MODEL
+        self._model = None
+
+        self._env = env or gp.Env(empty=True)
+        self._env.setParam("LogToConsole", 0)
+        self._env.start()
+
+        self._model_build(model_params)
+
+    # ==================================================================================
+    #   META PARAMETER HELPERS
+    # ==================================================================================
 
     def _set_model_params(
         self,
@@ -54,27 +108,48 @@ class gpBaseModel(gp.Model):
 
         self.ModelParams = ParamView(self._model_params)
 
-    def _add_core_vars(self):
+    # ==================================================================================
+    #   BUILD MODEL
+    # ==================================================================================
+
+    def _model_build(
+        self,
+        model_params: dict | None = None,
+    ):
         """
-        Add the variables to the models.
+        Build internal `gurobipy` model.
+        """
+        if self._model:
+            self._model.dispose()
+
+        self._model = gp.Model(f"uDGP_{self.NAME}", self._env)
+
+        self._set_model_params(overrides=model_params)
+
+        ## variables and constraints
+        self._model_add_core_vars()
+        self._model_add_core_constrs()
+        self.model_post_build()
+
+        self.update()
+
+    # ==================================================================================
+    #   VARIABLES AND CONSTRAINTS
+    # ==================================================================================
+
+    def _model_add_core_vars(self):
+        """
+        Adds: core variables to the models.
         """
         # Decisão: distância k é referente ao par de átomos i e j
-        if self.ModelParams.Relax:
-            # continuous `a` variable
-            self.a = self.addVars(
-                self.IJK,
-                name="a",
-                vtype=gp.GRB.CONTINUOUS,
-                lb=0,
-                ub=1,
-            )
-        else:
-            # binary `a` variable
-            self.a = self.addVars(
-                self.IJK,
-                name="a",
-                vtype=gp.GRB.BINARY,
-            )
+        self.a = self.addVars(
+            self.IJK,
+            name="a",
+            vtype=gp.GRB.CONTINUOUS if self.ModelParams.Relax else gp.GRB.BINARY,
+            lb=0,
+            ub=1,
+        )
+        self.a.BranchPriority = 10
         # Coordenadas do ponto i
         self.x = gp.tupledict(
             (
@@ -108,16 +183,16 @@ class gpBaseModel(gp.Model):
             self.IJ,
             name="r",
             vtype=gp.GRB.CONTINUOUS,
-            lb=self.d_min,
-            ub=self.d_max,
+            lb=self.d.min(),
+            ub=self.d.max(),
         )
 
-    def _add_core_constrs(self):
+    def _model_add_core_constrs(self):
         """
-        Adds the constraints to the model
+        Adds: core constraints to the model
         """
         self._constr_a1 = self.addConstrs(
-            self.a.sum("*", "*", k) <= self.freqs[k] for k in self.K
+            self.a.sum("*", "*", k) <= self.f[k] for k in self.K
         )
         self._constr_a2 = self.addConstrs(
             self.a.sum(i, j, "*") == 1 for i, j in self.IJ
@@ -129,8 +204,12 @@ class gpBaseModel(gp.Model):
             self.v[i, j] == self.y[i] - self.x[j] for i, j in self.IJyx
         )
         self._constr_r = self.addConstrs(
-            self.r[i, j] == self.v[i, j] @ self.v[i, j] for i, j in self.IJ
+            self.v[i, j] @ self.v[i, j] == self.r[i, j] for i, j in self.IJ
         )
+
+    # ==================================================================================
+    #   OBJECTIVE
+    # ==================================================================================
 
     @property
     def objective(self):
@@ -147,7 +226,11 @@ class gpBaseModel(gp.Model):
         self._objective = expr
         self.setObjective(expr, gp.GRB.MINIMIZE)
 
-    def model_post_init(self):
+    # ==================================================================================
+    #   LIFE-CYCLE HOOKS FOR SUBCLASSES
+    # ==================================================================================
+
+    def model_post_build(self):
         """
         Run *after* the base constructor finishes.
 
@@ -155,65 +238,91 @@ class gpBaseModel(gp.Model):
         """
         return
 
-    def __init__(
+    def model_pre_solve(self):
+        """
+        Run *before* the solve() routine.
+
+        Subclasses add their own logic here and should call super().
+        """
+        if self.ModelParams.Relax:
+            lbd = self.ModelParams.Lambda
+            self.objective += lbd * (
+                len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
+            )
+
+    # ==================================================================================
+    #   SOLVER PARAMS
+    # ==================================================================================
+
+    def _set_solver_params(
         self,
         *,
-        x_indices: np.ndarray,
-        y_indices: np.ndarray,
-        dists: np.ndarray,
-        freqs: np.ndarray,
-        fixed_points: np.ndarray,
-        model_params: dict | None = None,
-        env=None,
+        stage: str | None = None,
+        overrides: dict[str, Any] | None = None,
     ):
-        if not env:
-            env = gp.Env(empty=True)
-            env.setParam("LogToConsole", 0)
-            env.start()
+        """
+        Sets: solver-specific params.
+        """
+        self.resetParams()
 
-        super(gpBaseModel, self).__init__(f"uDGP_{self.NAME}", env)
+        params = get_solver_params(
+            solver="gurobi",
+            model=self.NAME,
+            stage=stage,
+        )
+        if overrides is not None:
+            params.update(overrides)
 
-        self._set_model_params(overrides=model_params)
+        self.Params.OutputFlag = 0
 
-        self.total_runtime = 0
-        self.total_work = 0
+        for k, v in params.items():
+            try:
+                self.setParam(k, v)
+            except Exception:
+                logger.warning(f"Error setting Gurobi param: {k} = {v}.")
 
-        # INSTANCE ATTRS
-        self.m = len(dists)
-        self.nx = len(x_indices)
-        self.ny = len(y_indices)
+        self.Params.OutputFlag = 1
 
-        # INSTANCE SETS
-        ## I Sets
-        self.Iy = gp.tuplelist(y_indices.tolist())
-        self.Ix = gp.tuplelist(x_indices.tolist())
-        self.I = gp.tuplelist(chain(self.Iy, self.Ix))
-        ## IJ Sets
-        self.IJyx = gp.tuplelist(product(self.Iy, self.Ix))
-        self.IJxx = gp.tuplelist(combinations(self.Ix, 2))
-        self.IJ = gp.tuplelist(chain(self.IJyx, self.IJxx))
-        ## K Set
-        self.K = gp.tuplelist([k for k in range(self.m) if freqs[k] != 0])
-        self.IJK = gp.tuplelist([(i, j, k) for (i, j), k in product(self.IJ, self.K)])
+    # ==================================================================================
+    #   MODEL SOLVERS
+    # ==================================================================================
 
-        # OTHER INSTANCE ATTRS
-        self.y = gp.tupledict((i, fixed_points[i]) for i in y_indices)
-        self.dists = dists**2
-        self.freqs = freqs
-        self.d_min = self.dists.min()
-        self.d_max = self.dists.max()
+    def optimize(self):
+        """
+        Optimize current model.
+        """
+        self.model_pre_solve()
+        self._model.optimize()
 
-        # VARIABLES AND CONSTRAINTS
-        self._add_core_vars()
-        self._add_core_constrs()
-        self.model_post_init()
+        self.time += self._model.Runtime
+        self.work += self._model.Work
 
-        self.update()
+    def solve(
+        self,
+        *,
+        stage: str | None = None,
+        solver_params: dict | None = None,
+    ):
+        """
+        Solve uDGP instance.
+        """
+        self._set_solver_params(stage=stage, overrides=solver_params)
+
+        self.optimize()
+
+        if self.SolCount == 0:
+            return False
+
+        return True
+
+    # ==================================================================================
+    #   SOLUTION HELPERS
+    # ==================================================================================
 
     @property
     def assignments(self) -> dict[tuple[int], int]:
         """
-        Retorna (list[tuple]): indices que correspondem aos valores de a unitários.
+        Retorna (dict[tuple[int], int]): indices que correspondem aos valores de a unitários.
         """
         return {
             (i, j): k
@@ -248,68 +357,3 @@ class gpBaseModel(gp.Model):
         Retorna (numpy.ndarray): valores da variável v.
         """
         return np.array([v.X for v in self.v.values()])
-
-    def model_pre_solve(self):
-        """
-        Run *before* the solve() routine.
-
-        Subclasses add their own logic here and should call super().
-        """
-        if self.ModelParams.Relax:
-            lbd = self.ModelParams.Lambda
-            self.objective += lbd * (
-                len(self.IJ) - gp.quicksum(a**2 for a in self.a.values())
-            )
-
-    def _set_solver_params(
-        self,
-        *,
-        stage: str | None = None,
-        overrides: dict[str, Any] | None = None,
-    ):
-        """
-        Sets: solver-specific params.
-        """
-        self.resetParams()
-
-        params = get_solver_params(
-            solver="gurobi",
-            model=self.NAME,
-            stage=stage,
-        )
-        if overrides is not None:
-            params.update(overrides)
-
-        self.Params.OutputFlag = 0
-
-        for k, v in params.items():
-            try:
-                self.setParam(k, v)
-            except Exception:
-                logger.warning(f"Error setting Gurobi param: {k} = {v}.")
-
-        self.Params.OutputFlag = 1
-
-    def solve(
-        self,
-        *,
-        stage: str | None = None,
-        solver_params: dict | None = None,
-    ):
-        """
-        Resolve o modelo.
-
-        Retorna: verdadeiro se uma solução foi encontrada
-        """
-        self.model_pre_solve()
-
-        self._set_solver_params(stage=stage, overrides=solver_params)
-        self.optimize()
-
-        if self.SolCount == 0:
-            return False
-
-        self.total_runtime += self.Runtime
-        self.total_work += self.Work
-
-        return True

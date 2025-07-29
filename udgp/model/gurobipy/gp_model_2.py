@@ -14,12 +14,11 @@ class gpM2(gpBaseModel):
 
     NAME = "M2"
     PARAMS = {
-        **gpBaseModel.PARAMS,
-        "MaxD2Gap": 1e-2,
+        "MaxD2Gap": 5e-2,
     }
 
-    def model_post_init(self):
-        super().model_post_init()
+    def model_post_build(self):
+        super().model_post_build()
 
         max_gap = self.ModelParams.MaxD2Gap
 
@@ -45,14 +44,16 @@ class gpM2(gpBaseModel):
             self.IJK,
             name="z",
             vtype=gp.GRB.SEMICONT,
-            lb=self.d_min,
-            ub=self.d_max,
+            lb=self.d.min(),
+            ub=self.d.max(),
             # vtype=gp.GRB.CONTINUOUS,
             # lb=0,
-            # ub=self.d_max,
+            # ub=self.d.max(),
         )
 
         # M2 CONSTRAINTS
+        M = self.d.max()
+
         self._constr_m2_1 = self.addConstrs(
             self.w[i, j] >= self.p[i, j] for i, j in self.IJ
         )
@@ -60,27 +61,25 @@ class gpM2(gpBaseModel):
             self.w[i, j] >= -self.p[i, j] for i, j in self.IJ
         )
         self._constr_m2_3 = self.addConstrs(
-            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
+            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * M + self.r[i, j]
             for i, j, k in self.IJK
         )
         self._constr_m2_4 = self.addConstrs(
-            self.z[i, j, k] <= (1 - self.a[i, j, k]) * self.d_max + self.r[i, j]
+            self.z[i, j, k] <= (1 - self.a[i, j, k]) * M + self.r[i, j]
             for i, j, k in self.IJK
         )
         self._constr_m2_5 = self.addConstrs(
-            self.z[i, j, k] >= -self.a[i, j, k] * self.d_max for i, j, k in self.IJK
+            self.z[i, j, k] >= -self.a[i, j, k] * M for i, j, k in self.IJK
         )
         self._constr_m2_6 = self.addConstrs(
-            self.z[i, j, k] <= self.a[i, j, k] * self.d_max for i, j, k in self.IJK
+            self.z[i, j, k] <= self.a[i, j, k] * M for i, j, k in self.IJK
         )
         self._constr_m2_7 = self.addConstrs(
-            self.z[i, j, k]
-            >= -(1 - self.a[i, j, k]) * self.d_max + self.dists[k] + self.p[i, j]
+            self.z[i, j, k] >= -(1 - self.a[i, j, k]) * M + self.d[k] + self.p[i, j]
             for i, j, k in self.IJK
         )
         self._constr_m2_8 = self.addConstrs(
-            self.z[i, j, k]
-            <= (1 - self.a[i, j, k]) * self.d_max + self.dists[k] + self.p[i, j]
+            self.z[i, j, k] <= (1 - self.a[i, j, k]) * M + self.d[k] + self.p[i, j]
             for i, j, k in self.IJK
         )
 

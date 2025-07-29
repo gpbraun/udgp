@@ -14,8 +14,8 @@ class gpM1(gpBaseModel):
 
     NAME = "M1"
 
-    def model_post_init(self):
-        super().model_post_init()
+    def model_post_build(self):
+        super().model_post_build()
 
         # M1 VARIABLES
         self.s = self.addVars(
@@ -42,7 +42,7 @@ class gpM1(gpBaseModel):
 
         # M1 CONSTRAINTS
         self._constr_m1_1 = self.addConstrs(
-            self.s[i, j, k] == self.r[i, j] - self.dists[k] for i, j, k in self.IJK
+            self.s[i, j, k] == self.r[i, j] - self.d[k] for i, j, k in self.IJK
         )
         self._constr_m1_2 = self.addConstrs(
             self.t[i, j, k] == self.s[i, j, k] ** 2 for i, j, k in self.IJK

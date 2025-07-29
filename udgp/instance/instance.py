@@ -34,17 +34,20 @@ class Instance:
 
         self.n = n
 
-        self.dists = dists
-        self.freqs = freqs
-        self.points = np.zeros((1, 3), dtype=np.float16)
+        self.dists = dists.copy()
+        self.freqs = freqs.copy()
+        self.points = np.array(
+            [[0.0, 0.0, 0.0], [dists[0], 0.0, 0.0]],
+            dtype=np.float16,
+        )
+        self.freqs[0] -= 1
 
-        self.a_indices = []
-        self.status = "ok"
-        self.runtime = 0.0
+        self.assignments = {}
+        self.time = 0.0
         self.work = 0.0
 
-        self.input_freqs = freqs
-        self.input_points = points
+        self.input_freqs = freqs.copy()
+        self.input_points = points.copy()
 
         self.rng = rng or np.random.default_rng(seed)
 
@@ -118,9 +121,9 @@ class Instance:
         self.dists = self.dists.copy()
         self.freqs = self.input_freqs.copy()
         self.points = np.zeros((1, 3), dtype=np.float16)
-        self.a_indices = []
+        self.assignments = {}
         if reset_runtime:
-            self.runtime = 0.0
+            self.time = 0.0
             self.work = 0.0
 
     def reset_with_core(
@@ -164,8 +167,7 @@ class Instance:
         ny = ny or self.n_fixed
         nx = nx or self.n - self.n_fixed
 
-        rng = np.random.default_rng()
-        y_indices = np.sort(rng.choice(self.n_fixed, ny, replace=False))
+        y_indices = np.sort(self.rng.choice(self.n_fixed, ny, replace=False))
         x_indices = np.arange(self.n_fixed, nx + self.n_fixed)
 
         model = get_model(
@@ -181,8 +183,8 @@ class Instance:
 
         solve_ok = model.solve(solver_params=solver_params)
 
-        self.runtime += model.total_runtime
-        self.work += model.total_work
+        self.time += model.time
+        self.work += model.work
 
         if not solve_ok:
             return False
@@ -195,7 +197,7 @@ class Instance:
             if error > 1e-2:
                 logger.info(f"ERRO NA DISTÂNCIA ({i}, {j}): {error}")
 
-            self.a_indices.append((i, j, k))
+            self.assignments[i, j] = k
             self.freqs[k] -= 1
 
         return True
@@ -220,7 +222,6 @@ class Instance:
         """
         Retorna (Instance): instância referente às coordenadas fornecidas.
         """
-
         dists = points_dists(points)
         freqs = None
 

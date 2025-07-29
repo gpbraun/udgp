@@ -2,7 +2,7 @@ import udgp
 
 udgp.set_logger("DEBUG", log_to_console=False, log_file="test/teste.log")
 
-N = 5
+N = 6
 instance = udgp.Instance.molecule_artificial(N, seed=123456)
 
 solved = instance.solve(
