@@ -120,8 +120,13 @@ class Instance:
         """
         self.dists = self.dists.copy()
         self.freqs = self.input_freqs.copy()
-        self.points = np.zeros((1, 3), dtype=np.float16)
+        self.points = np.array(
+            [[0.0, 0.0, 0.0], [self.dists[0], 0.0, 0.0]],
+            dtype=np.float16,
+        )
+
         self.assignments = {}
+
         if reset_runtime:
             self.time = 0.0
             self.work = 0.0
